@@ -95,6 +95,7 @@ export async function registerClientByInvite(token: string, phone: string, passw
   const clean = cleanPhone(phone);
   const email = phoneToEmail(clean);
 
+  // 1. Создаём пользователя
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) {
     if (error.message.toLowerCase().includes('already')) {
@@ -104,6 +105,15 @@ export async function registerClientByInvite(token: string, phone: string, passw
   }
   if (!data.user) return { error: 'Не удалось создать аккаунт' };
 
+  // 2. Убедимся, что сессия установлена (иначе RLS не пропустит)
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    // Пробуем войти явно
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr) return { error: 'Сессия не установлена: ' + signInErr.message };
+  }
+
+  // 3. Создаём запись клиента
   const { error: clientErr } = await supabase.from('clients').insert({
     user_id: data.user.id,
     trainer_id: invite.trainer_id,
@@ -113,6 +123,7 @@ export async function registerClientByInvite(token: string, phone: string, passw
   });
   if (clientErr) return { error: clientErr.message };
 
+  // 4. Закрываем приглашение
   await supabase.from('invites').update({ status: 'использована', phone: clean }).eq('id', invite.id);
 
   return { success: true };

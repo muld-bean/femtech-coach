@@ -7,8 +7,6 @@ import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
 import { AnalyticsSkeleton } from '../lib/Skeleton';
 
-const ORANGE = '#FF4A1C';
-
 export default function Analytics() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);

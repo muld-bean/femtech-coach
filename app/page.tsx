@@ -26,8 +26,16 @@ export default function Home() {
       .from('trainers')
       .select('id')
       .eq('user_id', user.user.id)
+  useEffect(() => {
+  supabase.auth.getSession().then(async ({ data }) => {
+    if (!data.session) return;
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+    const { data: trainer } = await supabase
+      .from('trainers')
+      .select('id')
+      .eq('user_id', user.user.id)
       .maybeSingle();
-
     if (trainer) router.push('/dashboard');
     else router.push('/cabinet');
   });

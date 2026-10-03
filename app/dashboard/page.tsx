@@ -32,20 +32,13 @@ useEffect(() => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { router.push('/'); return; }
 
-  let t = await getTrainer();
+  const t = await getTrainer();
 
-  // Если тренера нет — создаём автоматически
-  if (!t) {
-    const phone = (user.email || '').replace('@crm.local', '');
-    await supabase.from('trainers').insert({
-      user_id: user.id,
-      phone: phone || '000',
-      name: 'Muld',
-    });
-    t = await getTrainer();
-  }
-
-  if (!t) { router.push('/'); return; }
+// Если это не тренер — отправляем в кабинет клиента
+if (!t) {
+  router.push('/cabinet');
+  return;
+}
   setTrainer(t);
 
   const { data: c } = await supabase.from('clients').select('*').eq('trainer_id', t.id).order('name');

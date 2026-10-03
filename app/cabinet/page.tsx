@@ -248,7 +248,7 @@ export default function Cabinet() {
 function openTelegramLink() {
   if (!client) return;
   // Замени username на свой из BotFather
-  const botUsername = 'femtech_coach_bot';
+  const botUsername = 'MyTrainerHelperBot';
   const url = `https://t.me/${botUsername}?start=c_${client.id}`;
   window.open(url, '_blank');
 }

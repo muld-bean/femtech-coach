@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '../../../lib/supabase-admin';
 import { sendToTrainer, sendTelegram } from '../../../lib/telegram';
 
 export async function POST(req: Request) {
@@ -11,14 +12,38 @@ export async function POST(req: Request) {
     const text = String(msg.text).trim();
     const name = msg.from?.first_name || 'Друг';
 
-    if (text === '/start') {
+    // /start с параметром c_<client_id> — привязка клиента
+    if (text.startsWith('/start')) {
+      const parts = text.split(' ');
+      const payload = parts[1] || '';
+
+      if (payload.startsWith('c_')) {
+        const clientId = payload.slice(2);
+        const { error } = await supabaseAdmin
+          .from('clients')
+          .update({ telegram_chat_id: String(chatId) })
+          .eq('id', clientId);
+
+        if (error) {
+          await sendTelegram(chatId, 'Не удалось привязать аккаунт. Попроси тренера скинуть ссылку заново.');
+        } else {
+          await sendTelegram(
+            chatId,
+            `Привет, ${name}! 👋\n\nТеперь я буду присылать напоминания о тренировках и важные события.`
+          );
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      // Обычный /start
       await sendTelegram(
         chatId,
-        `Привет, ${name}! 👋\n\nТы подключён к боту тренера. Здесь будут напоминания о тренировках и ответы на твои вопросы.`
+        `Привет, ${name}! 👋\n\nЭто бот тренера. Здесь будут напоминания о тренировках.`
       );
       return NextResponse.json({ ok: true });
     }
 
+    // Остальное — пересылаем тренеру
     await sendToTrainer(
       `📩 <b>Сообщение от клиента</b>\n\n<b>${name}</b> (id: <code>${chatId}</code>):\n\n${text}`
     );

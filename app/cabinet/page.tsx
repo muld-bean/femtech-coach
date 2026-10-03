@@ -245,6 +245,14 @@ export default function Cabinet() {
     load();
   }
 
+function openTelegramLink() {
+  if (!client) return;
+  // Замени username на свой из BotFather
+  const botUsername = 'femtech_coach_bot';
+  const url = `https://t.me/${botUsername}?start=c_${client.id}`;
+  window.open(url, '_blank');
+}
+
   async function handleSignOut() {
     await signOut();
     router.push('/');
@@ -397,6 +405,18 @@ export default function Cabinet() {
               </div>
             );
           })()}
+
+          {!client.telegram_chat_id && (
+  <button
+    onClick={openTelegramLink}
+    className="w-full rounded-3xl p-5 text-left"
+    style={{ background: ORANGE, color: 'white' }}
+  >
+    <div className="text-xs uppercase tracking-widest opacity-80 mb-1">Подключить Telegram</div>
+    <div className="text-lg font-black">Получай напоминания о тренировках</div>
+    <div className="text-sm opacity-80 mt-1">Нажми и напиши боту /start</div>
+  </button>
+)}
 
           {/* TODAY PROGRAM */}
           {widgets.program && program.length > 0 && (

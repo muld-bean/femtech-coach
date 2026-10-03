@@ -17,29 +17,21 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-  supabase.auth.getSession().then(async ({ data }) => {
-    if (!data.session) return;
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
 
-    const { data: trainer } = await supabase
-      .from('trainers')
-      .select('id')
-      .eq('user_id', user.user.id)
-  useEffect(() => {
-  supabase.auth.getSession().then(async ({ data }) => {
-    if (!data.session) return;
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-    const { data: trainer } = await supabase
-      .from('trainers')
-      .select('id')
-      .eq('user_id', user.user.id)
-      .maybeSingle();
-    if (trainer) router.push('/dashboard');
-    else router.push('/cabinet');
-  });
-}, [router]);
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+
+      if (trainer) router.push('/dashboard');
+      else router.push('/cabinet');
+    });
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,22 +40,44 @@ export default function Home() {
 
     if (mode === 'login') {
       const res = await signIn(phone, password);
-      if (res.error) { setError(res.error); setLoading(false); return; }
-      router.push('/dashboard');
+      if (res.error) {
+        setError(res.error);
+        setLoading(false);
+        return;
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        router.push('/');
+        return;
+      }
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+
+      router.push(trainer ? '/dashboard' : '/cabinet');
     } else {
-      if (!name) { setError('Введите имя'); setLoading(false); return; }
+      if (!name) {
+        setError('Введите имя');
+        setLoading(false);
+        return;
+      }
       const res = await signUp(phone, password, name);
-      if (res.error) { setError(res.error); setLoading(false); return; }
+      if (res.error) {
+        setError(res.error);
+        setLoading(false);
+        return;
+      }
       router.push('/dashboard');
     }
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col" style={{ fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif' }}>
-
-      {/* HERO */}
+    <div className="min-h-screen bg-black text-white flex flex-col">
       <div className="pt-16 pb-8 px-8">
-        <div className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: ORANGE }}>
+        <div className="text-xs uppercase tracking-widest mb-3" style={{ color: ORANGE }}>
           FemTech
         </div>
         <div className="text-4xl font-black uppercase tracking-tight leading-none">
@@ -73,15 +87,13 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FORM */}
       <div className="flex-1 flex items-end">
-        <div className="w-full rounded-t-[32px] p-8 pb-10" style={{ background: '#141414', border: '1px solid #262626', borderBottom: 'none' }}>
-
+        <div className="w-full rounded-t-[32px] p-8 pb-10" style={{ background: '#141414', borderTop: '1px solid #262626' }}>
           <div className="flex gap-2 mb-6">
             <button
               type="button"
               onClick={() => setMode('login')}
-              className="flex-1 py-3 rounded-2xl font-bold text-sm transition-all"
+              className="flex-1 py-3 rounded-2xl font-bold text-sm"
               style={{
                 background: mode === 'login' ? ORANGE : '#0a0a0a',
                 color: mode === 'login' ? 'white' : '#666',
@@ -92,7 +104,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setMode('register')}
-              className="flex-1 py-3 rounded-2xl font-bold text-sm transition-all"
+              className="flex-1 py-3 rounded-2xl font-bold text-sm"
               style={{
                 background: mode === 'register' ? ORANGE : '#0a0a0a',
                 color: mode === 'register' ? 'white' : '#666',
@@ -103,35 +115,41 @@ export default function Home() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Телефон</label>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">
+              Телефон
+            </label>
             <input
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="+79991234567"
-              className="w-full p-4 rounded-2xl mb-4 text-white text-base focus:outline-none"
+              className="w-full p-4 rounded-2xl mb-4 text-white text-base"
               style={{ background: '#0a0a0a', border: '1px solid #262626' }}
               required
             />
 
-            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Пароль</label>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">
+              Пароль
+            </label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full p-4 rounded-2xl mb-4 text-white text-base focus:outline-none"
+              className="w-full p-4 rounded-2xl mb-4 text-white text-base"
               style={{ background: '#0a0a0a', border: '1px solid #262626' }}
               required
             />
 
             {mode === 'register' && (
               <>
-                <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Ваше имя</label>
+                <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">
+                  Ваше имя
+                </label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full p-4 rounded-2xl mb-4 text-white text-base focus:outline-none"
+                  className="w-full p-4 rounded-2xl mb-4 text-white text-base"
                   style={{ background: '#0a0a0a', border: '1px solid #262626' }}
                 />
               </>
@@ -146,10 +164,10 @@ export default function Home() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 rounded-2xl font-black uppercase tracking-wide text-white disabled:opacity-50 transition-all"
+              className="w-full py-4 rounded-2xl font-black uppercase tracking-wide text-white disabled:opacity-50"
               style={{ background: ORANGE }}
             >
-              {loading ? 'Подождите...' : (mode === 'login' ? 'Войти' : 'Зарегистрироваться')}
+              {loading ? 'Подождите...' : mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
             </button>
           </form>
         </div>

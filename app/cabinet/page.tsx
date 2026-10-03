@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getClientByUser, signOut } from '../lib/auth';
+import { useRealtime } from '../lib/useRealtime';
 
 type Tab = 'home' | 'schedule' | 'subscription' | 'progress';
 
@@ -98,6 +99,7 @@ export default function Cabinet() {
     } catch {}
     load();
   }, []);
+  useRealtime(['schedule', 'shifts', 'requests', 'cycles'], load);
 
   function showToast(msg: string) {
     setToast(msg);

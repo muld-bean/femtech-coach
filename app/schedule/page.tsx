@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
 import { ScheduleSkeleton } from '../lib/Skeleton';
+import { useRealtime } from '../lib/useRealtime';
 
 const ORANGE = '#FF4A1C';
 
@@ -68,6 +69,7 @@ const [delBusy, setDelBusy] = useState(false);
   }
 
   useEffect(() => { loadData(); }, [weekStart]);
+useRealtime(['schedule', 'shifts'], loadData);
 
   async function loadData() {
     const t = await getTrainer();

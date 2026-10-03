@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import TabBar from '../../lib/TabBar';
+import { useRealtime } from '../../lib/useRealtime';
 
 function phaseInfo(day: number) {
   if (day >= 1 && day <= 5) return { color: '#e53935', phase: 'Менструальная', advice: 'Снизить нагрузку на 30%.' };
@@ -59,6 +60,7 @@ export default function ClientProfile() {
   const [mThigh, setMThigh] = useState('');
 
   useEffect(() => { loadClient(); }, [id]);
+useRealtime(['schedule', 'program_items', 'measurements', 'cycles', 'clients'], loadClient);
 
   async function loadClient() {
     const { data: c } = await supabase.from('clients').select('*').eq('id', id).single();

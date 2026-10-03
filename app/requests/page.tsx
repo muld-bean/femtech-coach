@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
 import { ListSkeleton } from '../lib/Skeleton';
+import { useRealtime } from '../lib/useRealtime';
 
 const ORANGE = '#FF4A1C';
 
@@ -15,6 +16,7 @@ export default function Requests() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { load(); }, []);
+useRealtime(['requests'], load);
 
   async function load() {
     const t = await getTrainer();

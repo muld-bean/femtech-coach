@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
-import { sendToTrainer, sendTelegram } from '../../../../lib/telegram';
+import { supabase } from '../../../lib/supabase';
+import { sendToTrainer, sendTelegram } from '../../../lib/telegram';
 
 export async function GET(req: Request) {
   const auth = req.headers.get('authorization');

@@ -94,6 +94,7 @@ export async function registerClientByInvite(token: string, phone: string, passw
 
   const clean = cleanPhone(phone);
   const email = phoneToEmail(clean);
+  const trimmedName = name.trim();
 
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) {
@@ -110,27 +111,26 @@ export async function registerClientByInvite(token: string, phone: string, passw
     if (signInErr) return { error: 'Сессия не установлена: ' + signInErr.message };
   }
 
-  // Проверяем, есть ли уже клиент с этим телефоном у этого тренера
+  // Ищем клиента по имени у этого тренера
   const { data: existing } = await supabase
     .from('clients')
-    .select('id, user_id')
+    .select('id, user_id, phone')
     .eq('trainer_id', invite.trainer_id)
-    .eq('phone', clean)
+    .ilike('name', trimmedName)
     .maybeSingle();
 
   if (existing) {
-    // Привязываем user_id к существующей записи
     const { error: updErr } = await supabase.from('clients').update({
       user_id: data.user.id,
-      name,
+      phone: clean,
+      name: trimmedName,
     }).eq('id', existing.id);
     if (updErr) return { error: updErr.message };
   } else {
-    // Новый клиент — создаём запись
     const { error: insErr } = await supabase.from('clients').insert({
       user_id: data.user.id,
       trainer_id: invite.trainer_id,
-      name,
+      name: trimmedName,
       phone: clean,
       rest: 0,
     });

@@ -39,15 +39,19 @@ export default function Schedule() {
 
   // массово
   const [showBulk, setShowBulk] = useState(false);
-  const [bulkType, setBulkType] = useState<'shift' | 'booking'>('shift');
-  const [bulkDays, setBulkDays] = useState<number[]>([1, 3, 5]);
-  const [bulkStart, setBulkStart] = useState('19:00');
-  const [bulkEnd, setBulkEnd] = useState('23:00');
-  const [bulkFrom, setBulkFrom] = useState('');
-  const [bulkTo, setBulkTo] = useState('');
-  const [bulkClient, setBulkClient] = useState('');
-  const [bulkBusy, setBulkBusy] = useState(false);
+const [bulkDays, setBulkDays] = useState<number[]>([1, 3, 5]);
+const [bulkStart, setBulkStart] = useState('19:00');
+const [bulkFrom, setBulkFrom] = useState('');
+const [bulkTo, setBulkTo] = useState('');
+const [bulkClient, setBulkClient] = useState('');
+const [bulkBusy, setBulkBusy] = useState(false);
 
+const [showBulkDel, setShowBulkDel] = useState(false);
+const [delDays, setDelDays] = useState<number[]>([]);
+const [delFrom, setDelFrom] = useState('');
+const [delTo, setDelTo] = useState('');
+const [delClient, setDelClient] = useState('');
+const [delBusy, setDelBusy] = useState(false);
   function getMonday(d: Date) {
     const x = new Date(d);
     const day = x.getDay();
@@ -135,80 +139,105 @@ export default function Schedule() {
     setShowShift(false); loadData();
   }
 
-  function openBulk(type: 'shift' | 'booking') {
-    setBulkType(type);
-    const today = new Date();
-    setBulkFrom(fmt(today));
-    const inMonth = new Date();
-    inMonth.setDate(inMonth.getDate() + 28);
-    setBulkTo(fmt(inMonth));
-    setBulkDays([1, 3, 5]);
-    setBulkStart('19:00');
-    setBulkEnd('23:00');
-    setBulkClient(clients[0]?.id || '');
-    setShowBulk(true);
+  function openBulk() {
+  const today = new Date();
+  setBulkFrom(fmt(today));
+  const inMonth = new Date();
+  inMonth.setDate(inMonth.getDate() + 28);
+  setBulkTo(fmt(inMonth));
+  setBulkDays([1, 3, 5]);
+  setBulkStart('10:00');
+  setBulkClient(clients[0]?.id || '');
+  setShowBulk(true);
+}
+
+function toggleBulkDay(d: number) {
+  if (bulkDays.includes(d)) setBulkDays(bulkDays.filter(x => x !== d));
+  else setBulkDays([...bulkDays, d]);
+}
+
+async function runBulk() {
+  if (!trainer || bulkDays.length === 0 || !bulkFrom || !bulkTo) {
+    alert('Заполни дни и период');
+    return;
+  }
+  if (!bulkClient) {
+    alert('Выбери клиента');
+    return;
+  }
+  setBulkBusy(true);
+
+  const from = new Date(bulkFrom);
+  const to = new Date(bulkTo);
+  const created: any[] = [];
+  const client = clients.find(c => c.id === bulkClient);
+
+  const cur = new Date(from);
+  while (cur <= to) {
+    if (bulkDays.includes(cur.getDay())) {
+      created.push({
+        trainer_id: trainer.id,
+        client_id: bulkClient,
+        date: fmt(cur),
+        time: bulkStart,
+        status: 'план',
+        format: client?.format || null,
+      });
+    }
+    cur.setDate(cur.getDate() + 1);
   }
 
-  function toggleBulkDay(d: number) {
-    if (bulkDays.includes(d)) setBulkDays(bulkDays.filter(x => x !== d));
-    else setBulkDays([...bulkDays, d]);
-  }
-
-  async function runBulk() {
-    if (!trainer || bulkDays.length === 0 || !bulkFrom || !bulkTo) {
-      alert('Заполни дни и период');
-      return;
-    }
-    if (bulkType === 'booking' && !bulkClient) {
-      alert('Выбери клиента');
-      return;
-    }
-    setBulkBusy(true);
-
-    const from = new Date(bulkFrom);
-    const to = new Date(bulkTo);
-    const created: any[] = [];
-
-    const cur = new Date(from);
-    while (cur <= to) {
-      if (bulkDays.includes(cur.getDay())) {
-        const key = fmt(cur);
-        if (bulkType === 'shift') {
-          created.push({
-            trainer_id: trainer.id,
-            date: key,
-            start_time: bulkStart,
-            end_time: bulkEnd,
-          });
-        } else {
-          const client = clients.find(c => c.id === bulkClient);
-          created.push({
-            trainer_id: trainer.id,
-            client_id: bulkClient,
-            date: key,
-            time: bulkStart,
-            status: 'план',
-            format: client?.format || null,
-          });
-        }
-      }
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    if (created.length === 0) {
-      alert('Ничего не создалось');
-      setBulkBusy(false);
-      return;
-    }
-
-    const table = bulkType === 'shift' ? 'shifts' : 'schedule';
-    const { error } = await supabase.from(table).insert(created);
+  if (created.length === 0) {
+    alert('Ничего не создалось');
     setBulkBusy(false);
-    if (error) { alert(error.message); return; }
-    alert('Создано записей: ' + created.length);
-    setShowBulk(false);
-    loadData();
+    return;
   }
+
+  const { error } = await supabase.from('schedule').insert(created);
+  setBulkBusy(false);
+  if (error) { alert(error.message); return; }
+  alert('Создано записей: ' + created.length);
+  setShowBulk(false);
+  loadData();
+}
+
+function openBulkDelete() {
+  const today = new Date();
+  setDelFrom(fmt(today));
+  const inMonth = new Date();
+  inMonth.setDate(inMonth.getDate() + 28);
+  setDelTo(fmt(inMonth));
+  setDelDays([]);
+  setDelClient(clients[0]?.id || '');
+  setShowBulkDel(true);
+}
+
+function toggleDelDay(d: number) {
+  if (delDays.includes(d)) setDelDays(delDays.filter(x => x !== d));
+  else setDelDays([...delDays, d]);
+}
+
+async function runBulkDelete() {
+  if (!delFrom || !delTo || !delClient) {
+    alert('Заполни клиента и период');
+    return;
+  }
+  if (!confirm('Удалить все записи этого клиента за период?')) return;
+  setDelBusy(true);
+
+  const { error } = await supabase
+    .from('schedule')
+    .delete()
+    .eq('client_id', delClient)
+    .gte('date', delFrom)
+    .lte('date', delTo);
+
+  if (error) { alert(error.message); setDelBusy(false); return; }
+  setDelBusy(false);
+  alert('Записи удалены');
+  setShowBulkDel(false);
+  loadData();
+}
 
   async function removeItem(id: string) {
     if (!confirm('Удалить?')) return;
@@ -256,14 +285,14 @@ export default function Schedule() {
           <div className="text-sm font-bold">{shortDate(fmt(weekStart))} — {shortDate(fmt(days[6]))}</div>
           <button onClick={nextWeek} className="px-3 py-2 rounded-xl text-xs" style={{ background: '#141414', border: '1px solid #262626' }}>→</button>
         </div>
-        <div className="flex gap-2 mt-3">
-          <button onClick={() => openBulk('shift')} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: '#1e3a5f22', color: '#60a5fa' }}>
-            Смены массово
-          </button>
-          <button onClick={() => openBulk('booking')} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: ORANGE + '22', color: ORANGE }}>
-            Записи массово
-          </button>
-        </div>
+       <div className="flex gap-2 mt-3">
+  <button onClick={() => openBulk('booking')} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: ORANGE + '22', color: ORANGE }}>
+    Записать массово
+  </button>
+  <button onClick={() => openBulkDelete()} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: '#ef444422', color: '#ef4444' }}>
+    Удалить массово
+  </button>
+</div>
       </div>
 
       <div className="px-5 space-y-3">
@@ -361,19 +390,13 @@ export default function Schedule() {
       {showBulk && (
         <div className="fixed inset-0 bg-black/80 flex items-end z-50" onClick={() => setShowBulk(false)}>
           <div className="w-full rounded-t-3xl p-6 pb-10 max-h-[90vh] overflow-y-auto" style={{ background: '#141414' }} onClick={e => e.stopPropagation()}>
-            <div className="text-lg font-black uppercase mb-4">
-              {bulkType === 'shift' ? 'Массовые смены' : 'Массовые записи'}
-            </div>
+            <div className="text-lg font-black uppercase mb-4">Записать массово</div>
 
-            {bulkType === 'booking' && (
-              <>
-                <div className="text-xs text-white/50 mb-2">Клиент</div>
-                <select value={bulkClient} onChange={e => setBulkClient(e.target.value)} className="w-full p-3 rounded-xl mb-4 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }}>
-                  <option value="">Выбери</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </>
-            )}
+<div className="text-xs text-white/50 mb-2">Клиент</div>
+<select value={bulkClient} onChange={e => setBulkClient(e.target.value)} className="w-full p-3 rounded-xl mb-4 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }}>
+  <option value="">Выбери</option>
+  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+</select>
 
             <div className="text-xs text-white/50 mb-2">Дни недели</div>
             <div className="flex gap-1 mb-4">
@@ -393,18 +416,10 @@ export default function Schedule() {
               ))}
             </div>
 
-            <div className="flex gap-2 mb-4">
-              <div className="flex-1">
-                <div className="text-xs text-white/50 mb-2">{bulkType === 'shift' ? 'Начало' : 'Время'}</div>
-                <input type="time" value={bulkStart} onChange={e => setBulkStart(e.target.value)} className="w-full p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
-              </div>
-              {bulkType === 'shift' && (
-                <div className="flex-1">
-                  <div className="text-xs text-white/50 mb-2">Конец</div>
-                  <input type="time" value={bulkEnd} onChange={e => setBulkEnd(e.target.value)} className="w-full p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
-                </div>
-              )}
-            </div>
+            <div className="mb-4">
+  <div className="text-xs text-white/50 mb-2">Время</div>
+  <input type="time" value={bulkStart} onChange={e => setBulkStart(e.target.value)} className="w-full p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+</div>
 
             <div className="text-xs text-white/50 mb-2">Период</div>
             <div className="flex gap-2 mb-4">
@@ -427,6 +442,54 @@ export default function Schedule() {
           </div>
         </div>
       )}
+
+      {showBulkDel && (
+  <div className="fixed inset-0 bg-black/80 flex items-end z-50" onClick={() => setShowBulkDel(false)}>
+    <div className="w-full rounded-t-3xl p-6 pb-10 max-h-[90vh] overflow-y-auto" style={{ background: '#141414' }} onClick={e => e.stopPropagation()}>
+      <div className="text-lg font-black uppercase mb-4" style={{ color: '#ef4444' }}>Удалить массово</div>
+
+      <div className="text-xs text-white/50 mb-2">Клиент</div>
+      <select value={delClient} onChange={e => setDelClient(e.target.value)} className="w-full p-3 rounded-xl mb-4 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }}>
+        <option value="">Выбери</option>
+        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+
+      <div className="text-xs text-white/50 mb-2">Дни недели (необязательно)</div>
+      <div className="flex gap-1 mb-2">
+        {[1, 2, 3, 4, 5, 6, 0].map(d => (
+          <button
+            key={d}
+            onClick={() => toggleDelDay(d)}
+            className="flex-1 py-2 rounded-lg text-xs font-bold"
+            style={{
+              background: delDays.includes(d) ? '#ef4444' : '#0a0a0a',
+              color: delDays.includes(d) ? 'white' : '#666',
+              border: '1px solid #262626',
+            }}
+          >
+            {DNS_FULL[d]}
+          </button>
+        ))}
+      </div>
+      <div className="text-xs text-white/30 mb-4">Если дни не выбраны — удалит все записи клиента за период</div>
+
+      <div className="text-xs text-white/50 mb-2">Период</div>
+      <div className="flex gap-2 mb-4">
+        <input type="date" value={delFrom} onChange={e => setDelFrom(e.target.value)} className="flex-1 p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+        <input type="date" value={delTo} onChange={e => setDelTo(e.target.value)} className="flex-1 p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={() => setShowBulkDel(false)} className="flex-1 py-3 rounded-xl font-bold text-white/70" style={{ background: '#0a0a0a' }}>
+          Отмена
+        </button>
+        <button onClick={runBulkDelete} disabled={delBusy} className="flex-1 py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: '#ef4444' }}>
+          {delBusy ? 'Удаляю...' : 'Удалить'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <TabBar />
     </div>

@@ -8,6 +8,14 @@ import TabBar from '../lib/TabBar';
 
 const ORANGE = '#FF4A1C';
 
+const DNS_FULL = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+function shortDate(iso: string) {
+  if (!iso) return '';
+  const p = iso.split('-');
+  return p[2] + '.' + p[1];
+}
+
 export default function Schedule() {
   const router = useRouter();
   const [trainer, setTrainer] = useState<any>(null);
@@ -16,14 +24,29 @@ export default function Schedule() {
   const [shifts, setShifts] = useState<any[]>([]);
   const [weekStart, setWeekStart] = useState(getMonday(new Date()));
   const [loading, setLoading] = useState(true);
+
+  // одна запись
   const [showAdd, setShowAdd] = useState(false);
   const [selDate, setSelDate] = useState('');
   const [selTime, setSelTime] = useState('10:00');
   const [selClient, setSelClient] = useState('');
+
+  // одна смена
   const [showShift, setShowShift] = useState(false);
   const [shDate, setShDate] = useState('');
   const [shStart, setShStart] = useState('09:00');
   const [shEnd, setShEnd] = useState('13:00');
+
+  // массово
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkType, setBulkType] = useState<'shift' | 'booking'>('shift');
+  const [bulkDays, setBulkDays] = useState<number[]>([1, 3, 5]);
+  const [bulkStart, setBulkStart] = useState('19:00');
+  const [bulkEnd, setBulkEnd] = useState('23:00');
+  const [bulkFrom, setBulkFrom] = useState('');
+  const [bulkTo, setBulkTo] = useState('');
+  const [bulkClient, setBulkClient] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   function getMonday(d: Date) {
     const x = new Date(d);
@@ -52,8 +75,7 @@ export default function Schedule() {
     const end = new Date(weekStart);
     end.setDate(end.getDate() + 7);
 
-    const { data: s } = await supabase
-      .from('schedule')
+    const { data: s } = await supabase.from('schedule')
       .select('*, clients(name, format)')
       .eq('trainer_id', t.id)
       .gte('date', fmt(weekStart))
@@ -61,8 +83,7 @@ export default function Schedule() {
       .order('date').order('time');
     setItems(s || []);
 
-    const { data: sh } = await supabase
-      .from('shifts')
+    const { data: sh } = await supabase.from('shifts')
       .select('*')
       .eq('trainer_id', t.id)
       .gte('date', fmt(weekStart))
@@ -99,8 +120,7 @@ export default function Schedule() {
       format: client?.format || null,
     });
     if (error) { alert(error.message); return; }
-    setShowAdd(false);
-    loadData();
+    setShowAdd(false); loadData();
   }
 
   async function addShift() {
@@ -112,7 +132,81 @@ export default function Schedule() {
       end_time: shEnd,
     });
     if (error) { alert(error.message); return; }
-    setShowShift(false);
+    setShowShift(false); loadData();
+  }
+
+  function openBulk(type: 'shift' | 'booking') {
+    setBulkType(type);
+    const today = new Date();
+    setBulkFrom(fmt(today));
+    const inMonth = new Date();
+    inMonth.setDate(inMonth.getDate() + 28);
+    setBulkTo(fmt(inMonth));
+    setBulkDays([1, 3, 5]);
+    setBulkStart('19:00');
+    setBulkEnd('23:00');
+    setBulkClient(clients[0]?.id || '');
+    setShowBulk(true);
+  }
+
+  function toggleBulkDay(d: number) {
+    if (bulkDays.includes(d)) setBulkDays(bulkDays.filter(x => x !== d));
+    else setBulkDays([...bulkDays, d]);
+  }
+
+  async function runBulk() {
+    if (!trainer || bulkDays.length === 0 || !bulkFrom || !bulkTo) {
+      alert('Заполни дни и период');
+      return;
+    }
+    if (bulkType === 'booking' && !bulkClient) {
+      alert('Выбери клиента');
+      return;
+    }
+    setBulkBusy(true);
+
+    const from = new Date(bulkFrom);
+    const to = new Date(bulkTo);
+    const created: any[] = [];
+
+    const cur = new Date(from);
+    while (cur <= to) {
+      if (bulkDays.includes(cur.getDay())) {
+        const key = fmt(cur);
+        if (bulkType === 'shift') {
+          created.push({
+            trainer_id: trainer.id,
+            date: key,
+            start_time: bulkStart,
+            end_time: bulkEnd,
+          });
+        } else {
+          const client = clients.find(c => c.id === bulkClient);
+          created.push({
+            trainer_id: trainer.id,
+            client_id: bulkClient,
+            date: key,
+            time: bulkStart,
+            status: 'план',
+            format: client?.format || null,
+          });
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    if (created.length === 0) {
+      alert('Ничего не создалось');
+      setBulkBusy(false);
+      return;
+    }
+
+    const table = bulkType === 'shift' ? 'shifts' : 'schedule';
+    const { error } = await supabase.from(table).insert(created);
+    setBulkBusy(false);
+    if (error) { alert(error.message); return; }
+    alert('Создано записей: ' + created.length);
+    setShowBulk(false);
     loadData();
   }
 
@@ -147,8 +241,6 @@ export default function Schedule() {
     days.push(d);
   }
 
-  const DNS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-
   if (loading) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-white/50">Загрузка...</div>
@@ -161,8 +253,16 @@ export default function Schedule() {
         <div className="text-sm text-white/50">Расписание</div>
         <div className="flex justify-between items-center mt-3">
           <button onClick={prevWeek} className="px-3 py-2 rounded-xl text-xs" style={{ background: '#141414', border: '1px solid #262626' }}>←</button>
-          <div className="text-sm font-bold">{fmt(weekStart)} — {fmt(days[6])}</div>
+          <div className="text-sm font-bold">{shortDate(fmt(weekStart))} — {shortDate(fmt(days[6]))}</div>
           <button onClick={nextWeek} className="px-3 py-2 rounded-xl text-xs" style={{ background: '#141414', border: '1px solid #262626' }}>→</button>
+        </div>
+        <div className="flex gap-2 mt-3">
+          <button onClick={() => openBulk('shift')} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: '#1e3a5f22', color: '#60a5fa' }}>
+            Смены массово
+          </button>
+          <button onClick={() => openBulk('booking')} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: ORANGE + '22', color: ORANGE }}>
+            Записи массово
+          </button>
         </div>
       </div>
 
@@ -177,7 +277,7 @@ export default function Schedule() {
             <div key={key} className="rounded-3xl p-4" style={{ background: isToday ? '#1a1a1a' : '#141414', border: '1px solid ' + (isToday ? ORANGE + '55' : '#262626') }}>
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="text-sm font-black uppercase">{DNS[d.getDay()]} {key.slice(8, 10)}.{key.slice(5, 7)}</div>
+                  <div className="text-sm font-black uppercase">{DNS_FULL[d.getDay()]} {shortDate(key)}</div>
                   {isToday && <div className="w-2 h-2 rounded-full" style={{ background: ORANGE }} />}
                 </div>
                 <div className="flex gap-2">
@@ -220,6 +320,7 @@ export default function Schedule() {
         })}
       </div>
 
+      {/* ОДНА ЗАПИСЬ */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/80 flex items-end z-50" onClick={() => setShowAdd(false)}>
           <div className="w-full rounded-t-3xl p-6 pb-10" style={{ background: '#141414' }} onClick={e => e.stopPropagation()}>
@@ -238,6 +339,7 @@ export default function Schedule() {
         </div>
       )}
 
+      {/* ОДНА СМЕНА */}
       {showShift && (
         <div className="fixed inset-0 bg-black/80 flex items-end z-50" onClick={() => setShowShift(false)}>
           <div className="w-full rounded-t-3xl p-6 pb-10" style={{ background: '#141414' }} onClick={e => e.stopPropagation()}>
@@ -250,6 +352,77 @@ export default function Schedule() {
             <div className="flex gap-2">
               <button onClick={() => setShowShift(false)} className="flex-1 py-3 rounded-xl font-bold text-white/70" style={{ background: '#0a0a0a' }}>Отмена</button>
               <button onClick={addShift} className="flex-1 py-3 rounded-xl font-bold text-white" style={{ background: '#3b82f6' }}>Сохранить</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* МАССОВО */}
+      {showBulk && (
+        <div className="fixed inset-0 bg-black/80 flex items-end z-50" onClick={() => setShowBulk(false)}>
+          <div className="w-full rounded-t-3xl p-6 pb-10 max-h-[90vh] overflow-y-auto" style={{ background: '#141414' }} onClick={e => e.stopPropagation()}>
+            <div className="text-lg font-black uppercase mb-4">
+              {bulkType === 'shift' ? 'Массовые смены' : 'Массовые записи'}
+            </div>
+
+            {bulkType === 'booking' && (
+              <>
+                <div className="text-xs text-white/50 mb-2">Клиент</div>
+                <select value={bulkClient} onChange={e => setBulkClient(e.target.value)} className="w-full p-3 rounded-xl mb-4 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }}>
+                  <option value="">Выбери</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </>
+            )}
+
+            <div className="text-xs text-white/50 mb-2">Дни недели</div>
+            <div className="flex gap-1 mb-4">
+              {[1, 2, 3, 4, 5, 6, 0].map(d => (
+                <button
+                  key={d}
+                  onClick={() => toggleBulkDay(d)}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold"
+                  style={{
+                    background: bulkDays.includes(d) ? ORANGE : '#0a0a0a',
+                    color: bulkDays.includes(d) ? 'white' : '#666',
+                    border: '1px solid #262626',
+                  }}
+                >
+                  {DNS_FULL[d]}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              <div className="flex-1">
+                <div className="text-xs text-white/50 mb-2">{bulkType === 'shift' ? 'Начало' : 'Время'}</div>
+                <input type="time" value={bulkStart} onChange={e => setBulkStart(e.target.value)} className="w-full p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+              </div>
+              {bulkType === 'shift' && (
+                <div className="flex-1">
+                  <div className="text-xs text-white/50 mb-2">Конец</div>
+                  <input type="time" value={bulkEnd} onChange={e => setBulkEnd(e.target.value)} className="w-full p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+                </div>
+              )}
+            </div>
+
+            <div className="text-xs text-white/50 mb-2">Период</div>
+            <div className="flex gap-2 mb-4">
+              <input type="date" value={bulkFrom} onChange={e => setBulkFrom(e.target.value)} className="flex-1 p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+              <input type="date" value={bulkTo} onChange={e => setBulkTo(e.target.value)} className="flex-1 p-3 rounded-xl text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+            </div>
+
+            <div className="text-xs text-white/40 mb-4">
+              Будет создано: {bulkDays.length} дня в неделю × ~{Math.round((new Date(bulkTo).getTime() - new Date(bulkFrom).getTime()) / 86400000 / 7) || 0} недель
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setShowBulk(false)} className="flex-1 py-3 rounded-xl font-bold text-white/70" style={{ background: '#0a0a0a' }}>
+                Отмена
+              </button>
+              <button onClick={runBulk} disabled={bulkBusy} className="flex-1 py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: ORANGE }}>
+                {bulkBusy ? 'Создаю...' : 'Создать'}
+              </button>
             </div>
           </div>
         </div>

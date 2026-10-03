@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
 
+const ORANGE = '#FF4A1C';
+
 export default function Requests() {
   const router = useRouter();
   const [requests, setRequests] = useState<any[]>([]);
@@ -29,7 +31,7 @@ export default function Requests() {
   async function approve(r: any) {
     const t = await getTrainer();
     if (!t) return;
-    const { error: e1 } = await supabase.from('schedule').insert({
+    const { error } = await supabase.from('schedule').insert({
       trainer_id: t.id,
       client_id: r.client_id,
       date: r.date,
@@ -37,51 +39,54 @@ export default function Requests() {
       status: 'план',
       format: null,
     });
-    if (e1) { alert(e1.message); return; }
+    if (error) { alert(error.message); return; }
     await supabase.from('requests').update({ status: 'принята' }).eq('id', r.id);
     load();
   }
 
   async function reject(id: string) {
-    if (!confirm('Отклонить заявку?')) return;
+    if (!confirm('Отклонить?')) return;
     await supabase.from('requests').update({ status: 'отклонена' }).eq('id', id);
     load();
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white/50">Загрузка...</div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-6 rounded-b-3xl">
-        <div className="text-2xl font-bold">Заявки</div>
-        <div className="text-sm opacity-80 mt-1">Новых: {requests.length}</div>
+    <div className="min-h-screen bg-black text-white pb-24">
+      <div className="px-6 pt-8 pb-4">
+        <div className="text-sm text-white/50">Заявки</div>
+        <div className="text-3xl font-black uppercase tracking-tight mt-1">{requests.length}</div>
       </div>
 
-      <div className="p-4">
+      <div className="px-5 space-y-3">
         {requests.length === 0 && (
-          <div className="bg-white rounded-2xl p-8 text-center text-gray-400">
+          <div className="rounded-3xl p-8 text-center text-white/40 text-sm" style={{ background: '#141414', border: '1px solid #262626' }}>
             Нет новых заявок
           </div>
         )}
 
         {requests.map(r => (
-          <div key={r.id} className="bg-white rounded-2xl p-4 mb-3 shadow-sm border-l-4 border-yellow-400">
-            <div className="font-bold text-gray-800">{r.clients?.name}</div>
-            {r.clients?.phone && <div className="text-sm text-purple-600 mt-1">{r.clients.phone}</div>}
-            <div className="text-sm text-gray-600 mt-2">
-              {r.date} · {r.time}
-            </div>
+          <div key={r.id} className="rounded-2xl p-4" style={{ background: '#141414', borderLeft: '3px solid ' + ORANGE }}>
+            <div className="font-bold">{r.clients?.name}</div>
+            {r.clients?.phone && <div className="text-xs mt-1" style={{ color: ORANGE }}>{r.clients.phone}</div>}
+            <div className="text-sm text-white/60 mt-2">{r.date} · {r.time}</div>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => approve(r)} className="flex-1 py-2 bg-green-600 text-white rounded-xl font-bold text-sm">
+              <button onClick={() => approve(r)} className="flex-1 py-2 rounded-xl text-xs font-bold text-white" style={{ background: ORANGE }}>
                 Принять
               </button>
-              <button onClick={() => reject(r.id)} className="flex-1 py-2 bg-red-500 text-white rounded-xl font-bold text-sm">
+              <button onClick={() => reject(r.id)} className="flex-1 py-2 rounded-xl text-xs font-bold text-red-400 border border-red-500/30">
                 Отклонить
               </button>
             </div>
           </div>
         ))}
       </div>
+
       <TabBar />
     </div>
   );

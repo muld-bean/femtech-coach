@@ -103,7 +103,10 @@ export default function Cabinet() {
     } catch {}
     load();
   }, []);
-useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
+
+  // Периодическое обновление (polling)
+  useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
+
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
@@ -120,13 +123,11 @@ useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
     if (!c) { router.push('/'); return; }
     setClient(c);
 
-    const today = todayKey();
-
+    // Загружаем ВСЕ тренировки (прошлые + будущие)
     const { data: s } = await supabase
       .from('schedule')
       .select('*')
       .eq('client_id', c.id)
-      .gte('date', today)
       .order('date');
     setSchedule(s || []);
 
@@ -141,7 +142,7 @@ useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
       .from('shifts')
       .select('*')
       .eq('trainer_id', c.trainer_id)
-      .gte('date', today)
+      .gte('date', todayKey())
       .order('date')
       .limit(20);
     setShifts(sh || []);
@@ -260,8 +261,9 @@ useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
 
   const today = todayKey();
   const todaySchedule = schedule.filter(s => s.date === today);
+  const futureSchedule = schedule.filter(s => s.date >= today);
   const todayShifts = shifts.filter(s => s.date === today);
-  const nextTraining = schedule[0];
+  const nextTraining = futureSchedule[0];
   const restLeft = client.rest || 0;
   const dl = daysLeft(client.end_date);
   const goalV = parseFloat((client.goal1_value || '').replace(/[^\d.]/g, '')) || 0;
@@ -287,9 +289,6 @@ useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
           ⚙
         </button>
       </div>
-
-      {/* GLOW ACCENT */}
-      <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none" style={{ background: ORANGE + '22' }} />
 
       {/* TAB: HOME */}
       {tab === 'home' && (
@@ -326,147 +325,79 @@ useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
               )}
             </div>
           )}
+
+          {/* МОЙ ПУТЬ — УРОВЕНЬ И ДОСТИЖЕНИЯ */}
           {widgets.journey && (() => {
-  const trainingsCount = (schedule || []).filter((s: any) => s.status === 'проведено').length;
-  const level = getLevel(trainingsCount);
-  const nextLevel = getNextLevel(trainingsCount);
-  const progress = getProgressPercent(trainingsCount);
-  const achievements = getAchievements({
-    trainings: trainingsCount,
-    hasMeasurements: (measurements || []).length > 0,
-    hasGoal: !!client.goal1,
-    hasCycle: !!cycle,
-    hasStreakMonth: false,
-  });
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
+            const trainingsCount = schedule.filter((s: any) => s.status === 'проведено').length;
+            const level = getLevel(trainingsCount);
+            const nextLevel = getNextLevel(trainingsCount);
+            const progress = getProgressPercent(trainingsCount);
+            const achievements = getAchievements({
+              trainings: trainingsCount,
+              hasMeasurements: measurements.length > 0,
+              hasGoal: !!client.goal1,
+              hasCycle: !!cycle,
+              hasStreakMonth: false,
+            });
+            const unlockedCount = achievements.filter(a => a.unlocked).length;
 
-  return (
-    <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs uppercase tracking-widest text-white/50">Мой путь</div>
-        <div className="text-xs" style={{ color: level.color }}>{unlockedCount}/{achievements.length} 🏅</div>
-      </div>
+            return (
+              <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs uppercase tracking-widest text-white/50">Мой путь</div>
+                  <div className="text-xs" style={{ color: level.color }}>{unlockedCount}/{achievements.length} 🏅</div>
+                </div>
 
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center text-xs font-black uppercase"
-          style={{ background: level.color + '22', border: '2px solid ' + level.color, color: level.color }}>
-          {level.name.slice(0, 5)}
-        </div>
-        <div className="flex-1">
-          <div className="text-lg font-black" style={{ color: level.color }}>{level.name}</div>
-          <div className="text-xs text-white/50">
-            {trainingsCount} {trainingsCount === 1 ? 'тренировка' : trainingsCount < 5 ? 'тренировки' : 'тренировок'}
-          </div>
-        </div>
-      </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-[10px] font-black uppercase text-center leading-tight"
+                    style={{ background: level.color + '22', border: '2px solid ' + level.color, color: level.color }}>
+                    {level.name}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-lg font-black" style={{ color: level.color }}>{level.name}</div>
+                    <div className="text-xs text-white/50">
+                      {trainingsCount} {trainingsCount === 1 ? 'тренировка' : trainingsCount < 5 ? 'тренировки' : 'тренировок'}
+                    </div>
+                  </div>
+                </div>
 
-      {nextLevel && (
-        <>
-          <div className="flex justify-between text-xs text-white/40 mb-1">
-            <span>До {nextLevel.name}</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="h-2 rounded-full overflow-hidden mb-4" style={{ background: '#262626' }}>
-            <div className="h-2 rounded-full transition-all" style={{ width: progress + '%', background: level.color }} />
-          </div>
-        </>
-      )}
+                {nextLevel && (
+                  <>
+                    <div className="flex justify-between text-xs text-white/40 mb-1">
+                      <span>До {nextLevel.name}</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden mb-4" style={{ background: '#262626' }}>
+                      <div className="h-2 rounded-full transition-all" style={{ width: progress + '%', background: level.color }} />
+                    </div>
+                  </>
+                )}
 
-      <div className="grid grid-cols-4 gap-2">
-        {achievements.map(a => (
-          <div
-            key={a.id}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl text-center"
-            style={{
-              background: a.unlocked ? '#1a1a1a' : '#0a0a0a',
-              border: '1px solid ' + (a.unlocked ? '#262626' : '#1a1a1a'),
-              opacity: a.unlocked ? 1 : 0.35,
-            }}
-            title={a.description}
-          >
-            <div className="text-2xl mb-1" style={{ filter: a.unlocked ? 'none' : 'grayscale(100%)' }}>
-              {a.icon}
-            </div>
-            <div className="text-[8px] uppercase tracking-wide text-white/60 leading-tight">
-              {a.title}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-})()}
-{/* МОЙ ПУТЬ — УРОВЕНЬ И ДОСТИЖЕНИЯ */}
-{(() => {
-  const trainingsCount = (schedule || []).filter((s: any) => s.status === 'проведено').length;
-  const level = getLevel(trainingsCount);
-  const nextLevel = getNextLevel(trainingsCount);
-  const progress = getProgressPercent(trainingsCount);
-  const achievements = getAchievements({
-    trainings: trainingsCount,
-    hasMeasurements: (measurements || []).length > 0,
-    hasGoal: !!client.goal1,
-    hasCycle: !!cycle,
-    hasStreakMonth: false,
-  });
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
+                <div className="grid grid-cols-4 gap-2">
+                  {achievements.map(a => (
+                    <div
+                      key={a.id}
+                      className="flex flex-col items-center justify-center p-2 rounded-2xl text-center"
+                      style={{
+                        background: a.unlocked ? '#1a1a1a' : '#0a0a0a',
+                        border: '1px solid ' + (a.unlocked ? '#262626' : '#1a1a1a'),
+                        opacity: a.unlocked ? 1 : 0.35,
+                      }}
+                      title={a.description}
+                    >
+                      <div className="text-2xl mb-1" style={{ filter: a.unlocked ? 'none' : 'grayscale(100%)' }}>
+                        {a.icon}
+                      </div>
+                      <div className="text-[8px] uppercase tracking-wide text-white/60 leading-tight">
+                        {a.title}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
-  return (
-    <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs uppercase tracking-widest text-white/50">Мой путь</div>
-        <div className="text-xs" style={{ color: level.color }}>{unlockedCount}/{achievements.length} 🏅</div>
-      </div>
-
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center text-xs font-black uppercase"
-          style={{ background: level.color + '22', border: '2px solid ' + level.color, color: level.color }}>
-          {level.name.slice(0, 5)}
-        </div>
-        <div className="flex-1">
-          <div className="text-lg font-black" style={{ color: level.color }}>{level.name}</div>
-          <div className="text-xs text-white/50">
-            {trainingsCount} {trainingsCount === 1 ? 'тренировка' : trainingsCount < 5 ? 'тренировки' : 'тренировок'}
-          </div>
-        </div>
-      </div>
-
-      {nextLevel && (
-        <>
-          <div className="flex justify-between text-xs text-white/40 mb-1">
-            <span>До {nextLevel.name}</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="h-2 rounded-full overflow-hidden mb-4" style={{ background: '#262626' }}>
-            <div className="h-2 rounded-full transition-all" style={{ width: progress + '%', background: level.color }} />
-          </div>
-        </>
-      )}
-
-      <div className="grid grid-cols-4 gap-2">
-        {achievements.map(a => (
-          <div
-            key={a.id}
-            className="flex flex-col items-center justify-center p-2 rounded-2xl text-center"
-            style={{
-              background: a.unlocked ? '#1a1a1a' : '#0a0a0a',
-              border: '1px solid ' + (a.unlocked ? '#262626' : '#1a1a1a'),
-              opacity: a.unlocked ? 1 : 0.35,
-            }}
-            title={a.description}
-          >
-            <div className="text-2xl mb-1" style={{ filter: a.unlocked ? 'none' : 'grayscale(100%)' }}>
-              {a.icon}
-            </div>
-            <div className="text-[8px] uppercase tracking-wide text-white/60 leading-tight">
-              {a.title}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-})()}
           {/* TODAY PROGRAM */}
           {widgets.program && program.length > 0 && (
             <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
@@ -605,12 +536,12 @@ useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
       {tab === 'schedule' && (
         <div className="px-5 space-y-4">
           <div className="text-xs uppercase tracking-widest text-white/50 px-1 mb-2">Мои тренировки</div>
-          {schedule.length === 0 ? (
+          {futureSchedule.length === 0 ? (
             <div className="rounded-3xl p-6 text-center text-white/40 text-sm" style={{ background: '#141414', border: '1px solid #262626' }}>
               Пока ничего не запланировано
             </div>
           ) : (
-            schedule.map(s => (
+            futureSchedule.map(s => (
               <div key={s.id} className="rounded-2xl p-4 flex justify-between items-center" style={{ background: '#141414', border: '1px solid #262626' }}>
                 <div>
                   <div className="font-bold text-sm">{fmtDate(s.date)}</div>

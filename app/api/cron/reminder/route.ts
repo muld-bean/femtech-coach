@@ -3,8 +3,10 @@ import { supabase } from '../../../lib/supabase';
 import { sendToTrainer, sendTelegram } from '../../../lib/telegram';
 
 export async function GET(req: Request) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const url = new URL(req.url);
+  const token = url.searchParams.get('token');
+
+  if (token !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

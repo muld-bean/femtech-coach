@@ -1,34 +1,30 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { supabase } from './supabase';
 
-export function useRealtime(tables: string[], onChange: () => void) {
+export function useRealtime(_tables: string[], onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    const channelName = 'realtime_' + tables.join('_') + '_' + Date.now();
-    const channel = supabase.channel(channelName);
+    // Периодическое обновление каждые 15 секунд
+    const interval = setInterval(() => {
+      onChangeRef.current();
+    }, 15000);
 
-    tables.forEach(table => {
-      channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table },
-        (payload) => {
-          console.log('🔔 REALTIME', table, payload);
-          onChangeRef.current();
-        }
-      );
-    });
-
-    channel.subscribe((status) => {
-      console.log('📡 Realtime status:', status);
-    });
+    // Обновление при возврате на вкладку (когда пользователь переключается)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        onChangeRef.current();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tables.join(',')]);
+  }, []);
 }

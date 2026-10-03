@@ -46,3 +46,31 @@ export type Cycle = {
   end_date: string | null;
   last_day: number | null;
 };
+
+export type Request = {
+  id: string;
+  trainer_id: string;
+  client_id: string;
+  date: string | null;
+  time: string | null;
+  status: string;
+  created_at: string;
+};
+
+export type Template = {
+  id: string;
+  trainer_id: string;
+  name: string;
+};
+
+export type TemplateItem = {
+  id: string;
+  template_id: string;
+  day: number;
+  ord: number;
+  name: string;
+  sets: string | null;
+  reps: string | null;
+  weight: string | null;
+  note: string | null;
+};

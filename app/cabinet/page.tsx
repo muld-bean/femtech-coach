@@ -19,6 +19,8 @@ export default function Cabinet() {
   const [client, setClient] = useState<any>(null);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [program, setProgram] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<any[]>([]);
   const [cycle, setCycle] = useState<any>(null);
   const [cycleDay, setCycleDay] = useState(0);
   const [phase, setPhase] = useState<any>(null);
@@ -42,6 +44,22 @@ export default function Cabinet() {
     const { data: p } = await supabase.from('program_items').select('*').eq('client_id', c.id).order('day');
     setProgram(p || []);
 
+    const { data: sh } = await supabase
+      .from('shifts')
+      .select('*')
+      .eq('trainer_id', c.trainer_id)
+      .gte('date', new Date().toISOString().split('T')[0])
+      .order('date')
+      .limit(10);
+    setShifts(sh || []);
+
+    const { data: rq } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('client_id', c.id)
+      .order('created_at', { ascending: false });
+    setMyRequests(rq || []);
+
     const { data: cyc } = await supabase
       .from('cycles')
       .select('*')
@@ -60,6 +78,22 @@ export default function Cabinet() {
     }
 
     setLoading(false);
+  }
+
+  async function requestShift(shift: any) {
+    if (!client) return;
+    const time = prompt('На какое время хочешь записаться?', shift.start_time);
+    if (!time) return;
+    const { error } = await supabase.from('requests').insert({
+      trainer_id: client.trainer_id,
+      client_id: client.id,
+      date: shift.date,
+      time,
+      status: 'новая',
+    });
+    if (error) { alert(error.message); return; }
+    alert('Заявка отправлена!');
+    load();
   }
 
   async function markCycleStart() {
@@ -145,7 +179,7 @@ export default function Cabinet() {
               <div className="text-gray-400 text-sm text-center py-4 mb-3">Цикл не отмечен</div>
             )}
             <button onClick={markCycleStart} className="w-full py-3 bg-red-500 text-white rounded-xl font-bold mb-2">
-              Начало цикла (сегодня 1-й день)
+              Начало цикла
             </button>
             <button onClick={markCycleDay} className="w-full py-3 bg-purple-100 text-purple-700 rounded-xl font-bold mb-2">
               Ввести день цикла
@@ -174,6 +208,44 @@ export default function Cabinet() {
             ))
           )}
         </div>
+
+        <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+          <div className="text-lg font-bold mb-3">Смены тренера</div>
+          {shifts.length === 0 ? (
+            <div className="text-gray-400 text-sm text-center py-4">Смен нет</div>
+          ) : (
+            shifts.map(s => (
+              <div key={s.id} className="flex justify-between items-center py-2 border-b border-gray-100">
+                <div>
+                  <div className="font-semibold">{s.date}</div>
+                  <div className="text-xs text-gray-500">{s.start_time}–{s.end_time}</div>
+                </div>
+                <button onClick={() => requestShift(s)} className="text-purple-700 text-xs font-bold bg-purple-100 px-3 py-2 rounded-lg">
+                  Попроситься
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {myRequests.length > 0 && (
+          <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+            <div className="text-lg font-bold mb-3">Мои заявки</div>
+            {myRequests.map(r => (
+              <div key={r.id} className="flex justify-between py-2 border-b border-gray-100">
+                <div>
+                  <div className="font-semibold">{r.date} · {r.time}</div>
+                </div>
+                <div className={'text-xs px-2 py-1 rounded-full self-center ' +
+                  (r.status === 'принята' ? 'bg-green-100 text-green-700' :
+                   r.status === 'отклонена' ? 'bg-red-100 text-red-700' :
+                   'bg-yellow-100 text-yellow-700')}>
+                  {r.status}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
           <div className="text-lg font-bold mb-3">Программа</div>

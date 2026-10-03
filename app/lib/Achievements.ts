@@ -109,3 +109,47 @@ export function getAchievements(params: {
     },
   ];
 }
+export function calculateStreak(schedule: { date: string; status: string }[]): number {
+  // Идём от текущей недели назад, считаем сколько недель подряд ≥ 2 тренировок
+  const done = schedule.filter(s => s.status === 'проведено');
+  if (done.length === 0) return 0;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  function mondayOf(d: Date) {
+    const x = new Date(d);
+    const day = x.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  // Группируем по неделям
+  const weekCounts: Record<string, number> = {};
+  done.forEach(s => {
+    const d = new Date(s.date);
+    if (isNaN(d.getTime())) return;
+    const mon = mondayOf(d);
+    const key = mon.toISOString().split('T')[0];
+    weekCounts[key] = (weekCounts[key] || 0) + 1;
+  });
+
+  // Идём от текущей недели назад
+  let streak = 0;
+  const cur = mondayOf(now);
+  for (let i = 0; i < 52; i++) {
+    const key = cur.toISOString().split('T')[0];
+    const count = weekCounts[key] || 0;
+    if (count >= 2) {
+      streak++;
+    } else if (i === 0) {
+      // текущая неделя ещё не закончилась — не считаем пропуском
+    } else {
+      break;
+    }
+    cur.setDate(cur.getDate() - 7);
+  }
+  return streak;
+}

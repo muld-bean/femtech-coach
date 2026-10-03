@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 import { getClientByUser, signOut } from '../lib/auth';
 import { useRealtime } from '../lib/useRealtime';
 import { getLevel, getNextLevel, getProgressPercent, getAchievements } from '../lib/Achievements';
+import WeightChart from '../lib/WeightChart';
+import { getLevel, getNextLevel, getProgressPercent, getAchievements, calculateStreak } from '../lib/Achievements';
 
 type Tab = 'home' | 'schedule' | 'subscription' | 'progress';
 
@@ -340,12 +342,13 @@ function openTelegramLink() {
             const level = getLevel(trainingsCount);
             const nextLevel = getNextLevel(trainingsCount);
             const progress = getProgressPercent(trainingsCount);
+            const streak = calculateStreak(schedule);
             const achievements = getAchievements({
-              trainings: trainingsCount,
-              hasMeasurements: measurements.length > 0,
-              hasGoal: !!client.goal1,
-              hasCycle: !!cycle,
-              hasStreakMonth: false,
+             trainings: trainingsCount,
+             hasMeasurements: measurements.length > 0,
+             hasGoal: !!client.goal1,
+             hasCycle: !!cycle,
+             hasStreakMonth: streak >= 4,
             });
             const unlockedCount = achievements.filter(a => a.unlocked).length;
 
@@ -368,6 +371,14 @@ function openTelegramLink() {
                     </div>
                   </div>
                 </div>
+                {streak > 0 && (
+  <div className="mb-3 px-3 py-2 rounded-xl flex items-center justify-between" style={{ background: '#fbbf2422' }}>
+    <span className="text-xs text-white/70">Серия без пропусков</span>
+    <span className="text-sm font-black" style={{ color: '#fbbf24' }}>
+      🔥 {streak} {streak === 1 ? 'неделя' : streak < 5 ? 'недели' : 'недель'}
+    </span>
+  </div>
+)}
 
                 {nextLevel && (
                   <>
@@ -711,6 +722,17 @@ function openTelegramLink() {
           )}
         </div>
       )}
+
+      {measurements.filter(m => m.weight).length >= 2 && (
+  <div className="rounded-2xl p-4 mb-4" style={{ background: '#0a0a0a' }}>
+    <WeightChart
+      data={measurements
+        .filter(m => m.weight)
+        .map(m => ({ date: m.date, value: parseFloat(String(m.weight).replace(',', '.')) || 0 }))
+        .filter(p => p.value > 0)}
+    />
+  </div>
+)}
 
       {/* TOAST */}
       {toast && (

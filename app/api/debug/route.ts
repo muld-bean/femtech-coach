@@ -1,34 +1,22 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../lib/supabase-admin';
-import { supabase } from '../../lib/supabase';
 
 export async function GET(req: Request) {
-  const out: any = {
-    envCheck: {
-      url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      anon: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      service: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      serviceLength: (process.env.SUPABASE_SERVICE_ROLE_KEY || '').length,
-      cron: !!process.env.CRON_SECRET,
-    },
-    queries: {},
+  const out: any = {};
+
+  // Все тренеры (через admin — обходит RLS)
+  const { data: trainers, error: tErr } = await supabaseAdmin
+    .from('trainers')
+    .select('*');
+  out.trainers = { count: trainers?.length || 0, list: trainers, error: tErr?.message || null };
+
+  // Все пользователи auth
+  const { data: users, error: uErr } = await supabaseAdmin.auth.admin.listUsers();
+  out.authUsers = {
+    count: users?.users?.length || 0,
+    list: users?.users?.map((u: any) => ({ id: u.id, email: u.email })),
+    error: uErr?.message || null,
   };
-
-  // Обычный клиент
-  try {
-    const { data, error } = await supabase.from('trainers').select('*');
-    out.queries.anon = { count: data?.length ?? 0, error: error?.message || null };
-  } catch (e: any) {
-    out.queries.anon = { error: e.message };
-  }
-
-  // Admin клиент
-  try {
-    const { data, error } = await supabaseAdmin.from('trainers').select('*');
-    out.queries.admin = { count: data?.length ?? 0, error: error?.message || null, first: data?.[0] || null };
-  } catch (e: any) {
-    out.queries.admin = { error: e.message };
-  }
 
   return NextResponse.json(out);
 }

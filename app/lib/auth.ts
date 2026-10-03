@@ -95,35 +95,48 @@ export async function registerClientByInvite(token: string, phone: string, passw
   const clean = cleanPhone(phone);
   const email = phoneToEmail(clean);
 
-  // 1. Создаём пользователя
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) {
     if (error.message.toLowerCase().includes('already')) {
-      return { error: 'Этот телефон уже зарегистрирован' };
+      return { error: 'Этот телефон уже зарегистрирован. Попробуйте войти.' };
     }
     return { error: error.message };
   }
   if (!data.user) return { error: 'Не удалось создать аккаунт' };
 
-  // 2. Убедимся, что сессия установлена (иначе RLS не пропустит)
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
-    // Пробуем войти явно
     const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
     if (signInErr) return { error: 'Сессия не установлена: ' + signInErr.message };
   }
 
-  // 3. Создаём запись клиента
-  const { error: clientErr } = await supabase.from('clients').insert({
-    user_id: data.user.id,
-    trainer_id: invite.trainer_id,
-    name,
-    phone: clean,
-    rest: 0,
-  });
-  if (clientErr) return { error: clientErr.message };
+  // Проверяем, есть ли уже клиент с этим телефоном у этого тренера
+  const { data: existing } = await supabase
+    .from('clients')
+    .select('id, user_id')
+    .eq('trainer_id', invite.trainer_id)
+    .eq('phone', clean)
+    .maybeSingle();
 
-  // 4. Закрываем приглашение
+  if (existing) {
+    // Привязываем user_id к существующей записи
+    const { error: updErr } = await supabase.from('clients').update({
+      user_id: data.user.id,
+      name,
+    }).eq('id', existing.id);
+    if (updErr) return { error: updErr.message };
+  } else {
+    // Новый клиент — создаём запись
+    const { error: insErr } = await supabase.from('clients').insert({
+      user_id: data.user.id,
+      trainer_id: invite.trainer_id,
+      name,
+      phone: clean,
+      rest: 0,
+    });
+    if (insErr) return { error: insErr.message };
+  }
+
   await supabase.from('invites').update({ status: 'использована', phone: clean }).eq('id', invite.id);
 
   return { success: true };

@@ -4,11 +4,6 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Femtech Coach',
   description: 'CRM для фитнес-тренера',
-  icons: {
-    icon: '/femtech-icon.png',
-    apple: '/femtech-icon.png',
-    shortcut: '/femtech-icon.png',
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

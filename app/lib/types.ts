@@ -1,6 +1,7 @@
 export type Client = {
   id: string;
   trainer_id: string;
+  user_id: string | null;
   name: string;
   phone: string | null;
   gender: string;
@@ -10,6 +11,17 @@ export type Client = {
   rest: number;
   paid: string | null;
   note: string | null;
+  height: string | null;
+  weight: string | null;
+  medical: string | null;
+  injuries: string | null;
+  lifestyle: string | null;
+  cycle_note: string | null;
+  strategy: string | null;
+  goal1: string | null;
+  metric1: string | null;
+  goal1_value: string | null;
+  goal1_current: string | null;
 };
 
 export type Trainer = {
@@ -19,23 +31,18 @@ export type Trainer = {
   name: string;
 };
 
-export type ScheduleItem = {
+export type Shift = {
   id: string;
   trainer_id: string;
-  client_id: string;
   date: string;
-  time: string;
-  status: string;
-  format: string | null;
+  start_time: string;
+  end_time: string;
 };
 
-export type Measurement = {
+export type Cycle = {
   id: string;
   client_id: string;
-  date: string;
-  weight: string | null;
-  waist: string | null;
-  chest: string | null;
-  glutes: string | null;
-  thigh: string | null;
+  start_date: string;
+  end_date: string | null;
+  last_day: number | null;
 };

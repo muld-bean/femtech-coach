@@ -5,25 +5,30 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getClientByUser, signOut } from '../lib/auth';
 
+function phaseInfo(day: number) {
+  if (day >= 1 && day <= 5) return { color: '#e53935', phase: 'Менструальная', advice: 'Снизить нагрузку.' };
+  if (day >= 6 && day <= 13) return { color: '#4caf50', phase: 'Фолликулярная', advice: 'Пик силы.' };
+  if (day >= 14 && day <= 16) return { color: '#f9a825', phase: 'Овуляция', advice: 'Пик силы, но связки уязвимы.' };
+  if (day >= 17 && day <= 23) return { color: '#4caf50', phase: 'Ранняя лютеиновая', advice: 'Обычный режим.' };
+  if (day >= 24) return { color: '#e53935', phase: 'Поздняя лютеиновая', advice: 'Снизить нагрузку.' };
+  return { color: '#999', phase: '—', advice: '' };
+}
+
 export default function Cabinet() {
   const router = useRouter();
   const [client, setClient] = useState<any>(null);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [program, setProgram] = useState<any[]>([]);
+  const [cycle, setCycle] = useState<any>(null);
+  const [cycleDay, setCycleDay] = useState(0);
+  const [phase, setPhase] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   async function load() {
     const c = await getClientByUser();
-    if (!c) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push('/'); return; }
-      router.push('/');
-      return;
-    }
+    if (!c) { router.push('/'); return; }
     setClient(c);
 
     const { data: s } = await supabase
@@ -34,14 +39,67 @@ export default function Cabinet() {
       .order('date');
     setSchedule(s || []);
 
-    const { data: p } = await supabase
-      .from('program_items')
-      .select('*')
-      .eq('client_id', c.id)
-      .order('day');
+    const { data: p } = await supabase.from('program_items').select('*').eq('client_id', c.id).order('day');
     setProgram(p || []);
 
+    const { data: cyc } = await supabase
+      .from('cycles')
+      .select('*')
+      .eq('client_id', c.id)
+      .order('start_date', { ascending: false });
+    const active = (cyc || []).find((x: any) => !x.end_date);
+    setCycle(active || null);
+    if (active) {
+      const start = new Date(active.start_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let d = Math.floor((today.getTime() - start.getTime()) / 86400000) + 1;
+      if (d < 1) d = 1;
+      setCycleDay(d);
+      setPhase(phaseInfo(d));
+    }
+
     setLoading(false);
+  }
+
+  async function markCycleStart() {
+    if (!client) return;
+    if (!confirm('Отметить начало цикла сегодня?')) return;
+    if (cycle) {
+      await supabase.from('cycles').update({ end_date: new Date(Date.now() - 86400000).toISOString().split('T')[0] }).eq('id', cycle.id);
+    }
+    await supabase.from('cycles').insert({
+      client_id: client.id,
+      start_date: new Date().toISOString().split('T')[0],
+      last_day: 1,
+    });
+    load();
+  }
+
+  async function markCycleDay() {
+    if (!client) return;
+    const v = prompt('Какой сегодня день цикла?', '');
+    if (!v) return;
+    const n = parseInt(v);
+    if (!n || n < 1 || n > 60) { alert('Введи от 1 до 60'); return; }
+    if (cycle) {
+      await supabase.from('cycles').update({ end_date: new Date(Date.now() - 86400000).toISOString().split('T')[0] }).eq('id', cycle.id);
+    }
+    const start = new Date();
+    start.setDate(start.getDate() - (n - 1));
+    await supabase.from('cycles').insert({
+      client_id: client.id,
+      start_date: start.toISOString().split('T')[0],
+      last_day: n,
+    });
+    load();
+  }
+
+  async function markCycleMiss() {
+    if (!cycle) { alert('Нет активного цикла'); return; }
+    if (!confirm('Отметить сбой цикла?')) return;
+    await supabase.from('cycles').update({ end_date: new Date().toISOString().split('T')[0] }).eq('id', cycle.id);
+    load();
   }
 
   async function handleSignOut() {
@@ -60,9 +118,7 @@ export default function Cabinet() {
             <div className="text-sm opacity-80">Мой кабинет</div>
             <div className="text-2xl font-bold">{client.name}</div>
           </div>
-          <button onClick={handleSignOut} className="bg-white/20 px-4 py-2 rounded-full text-sm">
-            Выйти
-          </button>
+          <button onClick={handleSignOut} className="bg-white/20 px-4 py-2 rounded-full text-sm">Выйти</button>
         </div>
       </div>
 
@@ -71,6 +127,36 @@ export default function Cabinet() {
           <div className="text-sm text-gray-500 mb-2">Остаток занятий</div>
           <div className="text-5xl font-bold text-purple-700">{client.rest}</div>
         </div>
+
+        {client.gender === 'female' && (
+          <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+            <div className="text-lg font-bold mb-3">Мой цикл</div>
+            {cycle && phase ? (
+              <>
+                <div className="rounded-xl p-4 text-white text-center mb-3" style={{ background: phase.color }}>
+                  <div className="text-3xl font-bold">День {cycleDay}</div>
+                  <div className="text-sm mt-1">{phase.phase}</div>
+                </div>
+                <div className="text-sm rounded-lg p-3 mb-3" style={{ background: phase.color + '22', color: phase.color }}>
+                  {phase.advice}
+                </div>
+              </>
+            ) : (
+              <div className="text-gray-400 text-sm text-center py-4 mb-3">Цикл не отмечен</div>
+            )}
+            <button onClick={markCycleStart} className="w-full py-3 bg-red-500 text-white rounded-xl font-bold mb-2">
+              Начало цикла (сегодня 1-й день)
+            </button>
+            <button onClick={markCycleDay} className="w-full py-3 bg-purple-100 text-purple-700 rounded-xl font-bold mb-2">
+              Ввести день цикла
+            </button>
+            {cycle && (
+              <button onClick={markCycleMiss} className="w-full py-3 bg-gray-100 text-red-600 rounded-xl font-bold">
+                Сбой цикла
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
           <div className="text-lg font-bold mb-3">Мои тренировки</div>

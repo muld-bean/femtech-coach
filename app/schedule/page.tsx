@@ -11,12 +11,19 @@ export default function Schedule() {
   const [trainer, setTrainer] = useState<any>(null);
   const [clients, setClients] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [weekStart, setWeekStart] = useState(getMonday(new Date()));
+  const [loading, setLoading] = useState(true);
+
   const [showAdd, setShowAdd] = useState(false);
   const [selDate, setSelDate] = useState('');
   const [selTime, setSelTime] = useState('10:00');
   const [selClient, setSelClient] = useState('');
-  const [loading, setLoading] = useState(true);
+
+  const [showShift, setShowShift] = useState(false);
+  const [shDate, setShDate] = useState('');
+  const [shStart, setShStart] = useState('09:00');
+  const [shEnd, setShEnd] = useState('13:00');
 
   function getMonday(d: Date) {
     const x = new Date(d);
@@ -38,18 +45,32 @@ export default function Schedule() {
     const t = await getTrainer();
     if (!t) { router.push('/'); return; }
     setTrainer(t);
+
     const { data: c } = await supabase.from('clients').select('*').eq('trainer_id', t.id).order('name');
     setClients(c || []);
 
     const end = new Date(weekStart); end.setDate(end.getDate() + 7);
+    const startKey = fmt(weekStart);
+    const endKey = fmt(end);
+
     const { data: s } = await supabase
       .from('schedule')
       .select('*, clients(name, format)')
       .eq('trainer_id', t.id)
-      .gte('date', fmt(weekStart))
-      .lt('date', fmt(end))
+      .gte('date', startKey)
+      .lt('date', endKey)
       .order('date').order('time');
     setItems(s || []);
+
+    const { data: sh } = await supabase
+      .from('shifts')
+      .select('*')
+      .eq('trainer_id', t.id)
+      .gte('date', startKey)
+      .lt('date', endKey)
+      .order('date').order('start_time');
+    setShifts(sh || []);
+
     setLoading(false);
   }
 
@@ -91,6 +112,32 @@ export default function Schedule() {
     loadData();
   }
 
+  function openShift(dateKey: string) {
+    setShDate(dateKey);
+    setShStart('09:00');
+    setShEnd('13:00');
+    setShowShift(true);
+  }
+
+  async function addShift() {
+    if (!trainer) return;
+    const { error } = await supabase.from('shifts').insert({
+      trainer_id: trainer.id,
+      date: shDate,
+      start_time: shStart,
+      end_time: shEnd,
+    });
+    if (error) { alert(error.message); return; }
+    setShowShift(false);
+    loadData();
+  }
+
+  async function removeShift(id: string) {
+    if (!confirm('Удалить смену?')) return;
+    await supabase.from('shifts').delete().eq('id', id);
+    loadData();
+  }
+
   function prevWeek() { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); }
   function nextWeek() { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); }
 
@@ -120,13 +167,33 @@ export default function Schedule() {
         {days.map(d => {
           const key = fmt(d);
           const dayItems = items.filter(i => i.date === key).sort((a, b) => a.time.localeCompare(b.time));
+          const dayShifts = shifts.filter(s => s.date === key);
+
           return (
             <div key={key} className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
               <div className="flex justify-between items-center mb-2">
                 <div className="font-bold text-gray-800">{DNS[d.getDay()]} {key.slice(8, 10)}.{key.slice(5, 7)}</div>
-                <button onClick={() => openAdd(key)} className="text-purple-700 text-sm font-bold">+ записать</button>
+                <div className="flex gap-2">
+                  <button onClick={() => openShift(key)} className="text-blue-600 text-xs font-bold">+ смена</button>
+                  <button onClick={() => openAdd(key)} className="text-purple-700 text-xs font-bold">+ запись</button>
+                </div>
               </div>
-              {dayItems.length === 0 && <div className="text-gray-400 text-sm py-2">пусто</div>}
+
+              {dayShifts.length > 0 && (
+                <div className="bg-blue-50 rounded-lg p-2 mb-2">
+                  {dayShifts.map(s => (
+                    <div key={s.id} className="flex justify-between items-center text-sm">
+                      <span className="text-blue-800 font-semibold">Смена {s.start_time}–{s.end_time}</span>
+                      <button onClick={() => removeShift(s.id)} className="text-red-500 text-xs font-bold">удалить</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {dayItems.length === 0 && dayShifts.length === 0 && (
+                <div className="text-gray-400 text-sm py-2">пусто</div>
+              )}
+
               {dayItems.map(it => (
                 <div key={it.id} className={'flex justify-between items-center py-2 border-t border-gray-100 ' + (it.status === 'проведено' ? 'opacity-50' : '')}>
                   <div>
@@ -135,7 +202,7 @@ export default function Schedule() {
                   </div>
                   <div className="flex gap-2">
                     {it.status !== 'проведено' && (
-                      <button onClick={() => markDone(it.id, it.client_id)} className="text-green-600 text-xs font-bold px-2">Проведено</button>
+                      <button onClick={() => markDone(it.id, it.client_id)} className="text-green-600 text-xs font-bold px-2">OK</button>
                     )}
                     <button onClick={() => removeItem(it.id)} className="text-red-500 text-xs font-bold px-2">Удалить</button>
                   </div>
@@ -161,6 +228,29 @@ export default function Schedule() {
             <div className="flex gap-2">
               <button onClick={() => setShowAdd(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Отмена</button>
               <button onClick={addItem} className="flex-1 py-3 bg-purple-700 text-white rounded-xl font-bold">Сохранить</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showShift && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Новая смена</h3>
+            <div className="text-sm text-gray-500 mb-3">{shDate}</div>
+            <div className="flex gap-2 mb-4">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Начало</label>
+                <input type="time" value={shStart} onChange={e => setShStart(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Конец</label>
+                <input type="time" value={shEnd} onChange={e => setShEnd(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowShift(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Отмена</button>
+              <button onClick={addShift} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Сохранить</button>
             </div>
           </div>
         </div>

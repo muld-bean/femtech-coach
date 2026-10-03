@@ -10,23 +10,23 @@ export default function TabBar() {
 
   const tabs = [
     { key: '/dashboard', label: 'Главная' },
-    { key: '/schedule', label: 'Расписание' },
+    { key: '/schedule', label: 'Распис' },
     { key: '/clients', label: 'Клиенты' },
-    { key: '/templates', label: 'Шаблоны' },
     { key: '/requests', label: 'Заявки' },
-    { key: '/finance', label: 'Финансы' },
+    { key: '/analytics', label: 'Стата' },
+    { key: '/finance', label: 'Финанс' },
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40" style={{ background: '#0a0a0a', borderTop: '1px solid #1a1a1a' }}>
-      <div className="flex justify-around py-3 overflow-x-auto">
+      <div className="flex justify-around py-3">
         {tabs.map(t => {
           const active = path === t.key || path.startsWith(t.key + '/');
           return (
             <button
               key={t.key}
               onClick={() => router.push(t.key)}
-              className="flex-1 text-center py-1 min-w-[55px]"
+              className="flex-1 text-center py-1 min-w-[50px]"
             >
               <div
                 className="text-[10px] font-bold uppercase tracking-wider"

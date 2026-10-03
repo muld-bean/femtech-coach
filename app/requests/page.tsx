@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
+import { ListSkeleton } from '../lib/Skeleton';
 
 const ORANGE = '#FF4A1C';
 
@@ -50,11 +51,7 @@ export default function Requests() {
     load();
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white/50">Загрузка...</div>
-    </div>
-  );
+if (loading) return <ListSkeleton rows={3} />;
 
   return (
     <div className="min-h-screen bg-black text-white pb-24">

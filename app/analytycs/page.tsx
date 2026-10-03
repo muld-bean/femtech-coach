@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
+import { AnalyticsSkeleton } from '../lib/Skeleton';
 
 const ORANGE = '#FF4A1C';
 
@@ -44,11 +45,7 @@ export default function Analytics() {
     setLoading(false);
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white/50">Загрузка...</div>
-    </div>
-  );
+if (loading) return <AnalyticsSkeleton />;
 
   // === ВЫРУЧКА ПО МЕСЯЦАМ ===
   const monthMap: Record<string, number> = {};

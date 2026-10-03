@@ -1,5 +1,6 @@
 'use client';
 
+import { CardsSkeleton } from '../lib/Skeleton';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
@@ -21,7 +22,11 @@ export default function Dashboard() {
   const [newFormat, setNewFormat] = useState('Перс-10');
   const [newRest, setNewRest] = useState('0');
 
-  useEffect(() => { loadData(); }, []);
+useEffect(() => {
+  loadData();
+  // Prefetch остальных вкладок — Next.js подгружает их в фоне
+  ['/schedule', '/clients', '/analytics', '/finance', '/requests'].forEach(r => router.prefetch(r));
+}, []);
 
   async function loadData() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -95,11 +100,7 @@ export default function Dashboard() {
     router.push('/');
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white/50">Загрузка...</div>
-    </div>
-  );
+if (loading) return <CardsSkeleton />;
 
   const monthRevenue = payments.reduce((s, p) => s + (p.amount || 0), 0);
   const activeClients = clients.filter(c => c.rest > 0).length;

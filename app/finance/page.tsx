@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
+import { CardsSkeleton } from '../lib/Skeleton';
 
 const ORANGE = '#FF4A1C';
 
@@ -76,11 +77,7 @@ export default function Finance() {
   function prevMonth() { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); }
   function nextMonth() { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); }
 
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white/50">Загрузка...</div>
-    </div>
-  );
+if (loading) return <CardsSkeleton />;
 
   return (
     <div className="min-h-screen bg-black text-white pb-24">

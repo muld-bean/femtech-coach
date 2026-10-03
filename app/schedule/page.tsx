@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
+import { ScheduleSkeleton } from '../lib/Skeleton';
 
 const ORANGE = '#FF4A1C';
 
@@ -270,11 +271,7 @@ async function runBulkDelete() {
     days.push(d);
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white/50">Загрузка...</div>
-    </div>
-  );
+if (loading) return <ScheduleSkeleton />;
 
   return (
     <div className="min-h-screen bg-black text-white pb-24">

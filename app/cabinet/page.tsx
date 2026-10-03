@@ -99,8 +99,7 @@ export default function Cabinet() {
     } catch {}
     load();
   }, []);
-  useRealtime(['schedule', 'shifts', 'requests', 'cycles'], load);
-
+useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);

@@ -286,7 +286,7 @@ async function runBulkDelete() {
           <button onClick={nextWeek} className="px-3 py-2 rounded-xl text-xs" style={{ background: '#141414', border: '1px solid #262626' }}>→</button>
         </div>
        <div className="flex gap-2 mt-3">
-  <button onClick={() => openBulk('booking')} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: ORANGE + '22', color: ORANGE }}>
+  <button onClick={() => openBulk()} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: ORANGE + '22', color: ORANGE }}>
     Записать массово
   </button>
   <button onClick={() => openBulkDelete()} className="flex-1 text-xs font-bold py-2 rounded-xl" style={{ background: '#ef444422', color: '#ef4444' }}>

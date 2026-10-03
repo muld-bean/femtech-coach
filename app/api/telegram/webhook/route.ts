@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase-admin';
 import { sendToTrainer, sendTelegram } from '../../../lib/telegram';
 
+const BASE_URL = 'https://femtech-coach-production.up.railway.app';
+
 export async function POST(req: Request) {
   try {
     const update = await req.json();
@@ -12,38 +14,50 @@ export async function POST(req: Request) {
     const text = String(msg.text).trim();
     const name = msg.from?.first_name || 'Друг';
 
-    // /start с параметром c_<client_id> — привязка клиента
     if (text.startsWith('/start')) {
       const parts = text.split(' ');
       const payload = parts[1] || '';
 
       if (payload.startsWith('c_')) {
         const clientId = payload.slice(2);
-        const { error } = await supabaseAdmin
+
+        // Привязка chat_id
+        const { data: client, error } = await supabaseAdmin
           .from('clients')
           .update({ telegram_chat_id: String(chatId) })
-          .eq('id', clientId);
+          .eq('id', clientId)
+          .select('id, name, magic_token')
+          .single();
 
-        if (error) {
+        if (error || !client) {
           await sendTelegram(chatId, 'Не удалось привязать аккаунт. Попроси тренера скинуть ссылку заново.');
-        } else {
-          await sendTelegram(
-            chatId,
-            `Привет, ${name}! 👋\n\nТеперь я буду присылать напоминания о тренировках и важные события.`
-          );
+          return NextResponse.json({ ok: true });
         }
+
+        // Если нет magic_token — генерируем
+        let token = client.magic_token;
+        if (!token) {
+          token = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+          await supabaseAdmin.from('clients').update({ magic_token: token }).eq('id', client.id);
+        }
+
+        const enterUrl = BASE_URL + '/enter?token=' + token;
+
+        await sendTelegram(
+          chatId,
+          `Привет, ${name}! 👋\n\nТы подключена к тренеру.\n\n🔗 <b>Твоя личная ссылка для входа в кабинет:</b>\n${enterUrl}\n\nСохрани её — работает без пароля.`
+        );
+
         return NextResponse.json({ ok: true });
       }
 
-      // Обычный /start
       await sendTelegram(
         chatId,
-        `Привет, ${name}! 👋\n\nЭто бот тренера. Здесь будут напоминания о тренировках.`
+        `Привет, ${name}! 👋\n\nЭто бот тренера. Открой ссылку-приглашение от тренера, чтобы подключиться.`
       );
       return NextResponse.json({ ok: true });
     }
 
-    // Остальное — пересылаем тренеру
     await sendToTrainer(
       `📩 <b>Сообщение от клиента</b>\n\n<b>${name}</b> (id: <code>${chatId}</code>):\n\n${text}`
     );

@@ -127,13 +127,16 @@ export async function registerClientByInvite(token: string, phone: string, passw
     }).eq('id', existing.id);
     if (updErr) return { error: updErr.message };
   } else {
-    const { error: insErr } = await supabase.from('clients').insert({
-      user_id: data.user.id,
-      trainer_id: invite.trainer_id,
-      name: trimmedName,
-      phone: clean,
-      rest: 0,
-    });
+    const magicToken = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+
+const { error: insErr } = await supabase.from('clients').insert({
+  user_id: data.user.id,
+  trainer_id: invite.trainer_id,
+  name,
+  phone: clean,
+  rest: 0,
+  magic_token: magicToken,
+});
     if (insErr) return { error: insErr.message };
   }
 

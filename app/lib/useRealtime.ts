@@ -8,19 +8,23 @@ export function useRealtime(tables: string[], onChange: () => void) {
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    const channel = supabase.channel('realtime_' + tables.join('_'));
+    const channelName = 'realtime_' + tables.join('_') + '_' + Date.now();
+    const channel = supabase.channel(channelName);
 
     tables.forEach(table => {
       channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table },
-        () => {
+        (payload) => {
+          console.log('🔔 REALTIME', table, payload);
           onChangeRef.current();
         }
       );
     });
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      console.log('📡 Realtime status:', status);
+    });
 
     return () => {
       supabase.removeChannel(channel);

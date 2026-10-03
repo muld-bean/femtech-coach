@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
 
+const ORANGE = '#FF4A1C';
+
 export default function Finance() {
   const router = useRouter();
   const [payments, setPayments] = useState<any[]>([]);
@@ -13,7 +15,6 @@ export default function Finance() {
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
-
   const [showAdd, setShowAdd] = useState(false);
   const [selClient, setSelClient] = useState('');
   const [amount, setAmount] = useState('');
@@ -30,7 +31,12 @@ export default function Finance() {
     const start = new Date(year, month, 1).toISOString().split('T')[0];
     const end = new Date(year, month + 1, 1).toISOString().split('T')[0];
 
-    const { data: p } = await supabase.from('payments').select('*, clients(name)').eq('trainer_id', t.id).gte('date', start).lt('date', end).order('date', { ascending: false });
+    const { data: p } = await supabase.from('payments')
+      .select('*, clients(name)')
+      .eq('trainer_id', t.id)
+      .gte('date', start)
+      .lt('date', end)
+      .order('date', { ascending: false });
     setPayments(p || []);
 
     const { data: c } = await supabase.from('clients').select('*').eq('trainer_id', t.id).order('name');
@@ -70,87 +76,90 @@ export default function Finance() {
   function prevMonth() { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); }
   function nextMonth() { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white/50">Загрузка...</div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-6 rounded-b-3xl">
-        <div className="text-2xl font-bold">Финансы</div>
-        <div className="flex justify-between items-center mt-4">
-          <button onClick={prevMonth} className="bg-white/20 px-4 py-2 rounded-xl">Назад</button>
-          <div className="font-semibold">{monthNames[month]} {year}</div>
-          <button onClick={nextMonth} className="bg-white/20 px-4 py-2 rounded-xl">Вперёд</button>
+    <div className="min-h-screen bg-black text-white pb-24">
+      <div className="px-6 pt-8 pb-4">
+        <div className="text-sm text-white/50">Финансы</div>
+        <div className="flex justify-between items-center mt-3">
+          <button onClick={prevMonth} className="px-3 py-2 rounded-xl text-xs" style={{ background: '#141414', border: '1px solid #262626' }}>←</button>
+          <div className="text-sm font-bold">{monthNames[month]} {year}</div>
+          <button onClick={nextMonth} className="px-3 py-2 rounded-xl text-xs" style={{ background: '#141414', border: '1px solid #262626' }}>→</button>
         </div>
       </div>
 
-      <div className="p-4">
-        <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
-          <div className="text-sm text-gray-500 mb-1">Выручка за месяц</div>
-          <div className="text-4xl font-bold text-purple-700">{revenue.toLocaleString('ru-RU')} р.</div>
+      <div className="px-5 space-y-4">
+        <div className="rounded-3xl p-6" style={{ background: '#141414', border: '1px solid #262626' }}>
+          <div className="text-[10px] uppercase tracking-widest text-white/50 mb-2">Выручка</div>
+          <div className="text-4xl font-black" style={{ color: ORANGE }}>{revenue.toLocaleString('ru-RU')} ₽</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
-          <div className="text-lg font-bold mb-3">Расходы</div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Налог 4%</span>
-            <span className="font-semibold">- {tax.toLocaleString('ru-RU')} р.</span>
+        <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
+          <div className="text-[10px] uppercase tracking-widest text-white/50 mb-3">Расходы</div>
+          <div className="flex justify-between py-2 border-b border-neutral-900">
+            <span className="text-sm text-white/60">Налог 4%</span>
+            <span className="text-sm font-semibold">− {tax.toLocaleString('ru-RU')} ₽</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Эквайринг 0.7%</span>
-            <span className="font-semibold">- {acq.toLocaleString('ru-RU')} р.</span>
+          <div className="flex justify-between py-2 border-b border-neutral-900">
+            <span className="text-sm text-white/60">Эквайринг 0.7%</span>
+            <span className="text-sm font-semibold">− {acq.toLocaleString('ru-RU')} ₽</span>
           </div>
           <div className="flex justify-between py-2">
-            <span className="text-gray-500">Аренда</span>
-            <span className="font-semibold">- {rent.toLocaleString('ru-RU')} р.</span>
+            <span className="text-sm text-white/60">Аренда</span>
+            <span className="text-sm font-semibold">− {rent.toLocaleString('ru-RU')} ₽</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
-          <div className="text-lg font-bold mb-3">Чистыми</div>
-          <div className={'text-3xl font-bold ' + (net >= 0 ? 'text-green-600' : 'text-red-600')}>
-            {net.toLocaleString('ru-RU')} р.
-          </div>
+        <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid ' + (net >= 0 ? '#4ade8033' : '#ef444433') }}>
+          <div className="text-[10px] uppercase tracking-widest text-white/50 mb-2">Чистыми</div>
+          <div className="text-3xl font-black" style={{ color: net >= 0 ? '#4ade80' : '#ef4444' }}>{net.toLocaleString('ru-RU')} ₽</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <div className="text-lg font-bold">Платежи</div>
-            <button onClick={() => setShowAdd(true)} className="bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold">+ Платёж</button>
-          </div>
-          {payments.length === 0 ? (
-            <div className="text-gray-400 text-sm text-center py-4">Нет платежей</div>
-          ) : (
-            payments.map(p => (
-              <div key={p.id} className="flex justify-between items-center py-2 border-b border-gray-100">
-                <div>
-                  <div className="font-semibold">{p.clients?.name || 'Клиент'}</div>
-                  <div className="text-xs text-gray-500">{p.date} · {p.format || ''}</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-purple-700">{p.amount.toLocaleString('ru-RU')} р.</span>
-                  <button onClick={() => removePayment(p.id)} className="text-red-500 text-xs font-bold">Удалить</button>
-                </div>
-              </div>
-            ))
-          )}
+        <div className="flex justify-between items-center pt-2">
+          <div className="text-xs uppercase tracking-widest text-white/50">Платежи</div>
+          <button onClick={() => setShowAdd(true)} className="text-xs font-bold px-3 py-2 rounded-xl text-white" style={{ background: ORANGE }}>+ Платёж</button>
         </div>
+
+        {payments.length === 0 && (
+          <div className="rounded-3xl p-8 text-center text-white/40 text-sm" style={{ background: '#141414', border: '1px solid #262626' }}>
+            Нет платежей за месяц
+          </div>
+        )}
+
+        {payments.map(p => (
+          <div key={p.id} className="rounded-2xl p-4 flex justify-between items-center" style={{ background: '#141414', border: '1px solid #262626' }}>
+            <div>
+              <div className="font-bold text-sm">{p.clients?.name || '—'}</div>
+              <div className="text-xs text-white/50 mt-1">{p.date} · {p.format || ''}</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="font-black" style={{ color: ORANGE }}>{p.amount.toLocaleString('ru-RU')} ₽</div>
+              <button onClick={() => removePayment(p.id)} className="text-red-400 text-xs font-bold">×</button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {showAdd && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Новый платёж</h3>
-            <select value={selClient} onChange={e => setSelClient(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3">
+        <div className="fixed inset-0 bg-black/80 flex items-end z-50" onClick={() => setShowAdd(false)}>
+          <div className="w-full rounded-t-3xl p-6 pb-10" style={{ background: '#141414' }} onClick={e => e.stopPropagation()}>
+            <div className="text-lg font-black uppercase mb-4">Новый платёж</div>
+            <select value={selClient} onChange={e => setSelClient(e.target.value)} className="w-full p-3 rounded-xl mb-3 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }}>
               <option value="">Выбери клиента</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Сумма" className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3" />
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3" />
-            <input value={format} onChange={e => setFormat(e.target.value)} placeholder="Формат" className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3" />
-            <input value={comment} onChange={e => setComment(e.target.value)} placeholder="Комментарий" className="w-full p-3 border-2 border-gray-200 rounded-xl mb-4" />
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Сумма" className="w-full p-3 rounded-xl mb-3 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-3 rounded-xl mb-3 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+            <input value={format} onChange={e => setFormat(e.target.value)} placeholder="Формат" className="w-full p-3 rounded-xl mb-3 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
+            <input value={comment} onChange={e => setComment(e.target.value)} placeholder="Комментарий" className="w-full p-3 rounded-xl mb-4 text-white" style={{ background: '#0a0a0a', border: '1px solid #262626' }} />
             <div className="flex gap-2">
-              <button onClick={() => setShowAdd(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Отмена</button>
-              <button onClick={addPayment} className="flex-1 py-3 bg-purple-700 text-white rounded-xl font-bold">Сохранить</button>
+              <button onClick={() => setShowAdd(false)} className="flex-1 py-3 rounded-xl font-bold text-white/70" style={{ background: '#0a0a0a' }}>Отмена</button>
+              <button onClick={addPayment} className="flex-1 py-3 rounded-xl font-bold text-white" style={{ background: ORANGE }}>Сохранить</button>
             </div>
           </div>
         </div>

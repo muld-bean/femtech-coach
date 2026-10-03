@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 import { getTrainer } from '../lib/auth';
 import TabBar from '../lib/TabBar';
 
+const ORANGE = '#FF4A1C';
+
 export default function Clients() {
   const router = useRouter();
   const [clients, setClients] = useState<any[]>([]);
@@ -21,25 +23,49 @@ export default function Clients() {
     setLoading(false);
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white/50">Загрузка...</div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-6 rounded-b-3xl">
-        <div className="text-2xl font-bold">Клиенты</div>
-        <div className="text-sm opacity-80 mt-1">Всего: {clients.length}</div>
+    <div className="min-h-screen bg-black text-white pb-24">
+      <div className="px-6 pt-8 pb-4">
+        <div className="text-sm text-white/50">Клиенты</div>
+        <div className="text-3xl font-black uppercase tracking-tight mt-1">{clients.length}</div>
       </div>
 
-      <div className="p-4">
+      <div className="px-5 space-y-3">
+        {clients.length === 0 && (
+          <div className="rounded-3xl p-8 text-center text-white/40 text-sm" style={{ background: '#141414', border: '1px solid #262626' }}>
+            Нет клиентов
+          </div>
+        )}
+
         {clients.map(c => (
-          <div key={c.id} onClick={() => router.push('/client/' + c.id)} className="bg-white rounded-2xl p-4 mb-3 shadow-sm cursor-pointer">
-            <div className="font-bold text-gray-800">{c.name}</div>
-            <div className="text-sm text-gray-500">{c.format || 'без формата'}</div>
-            {c.phone && <div className="text-sm text-purple-600 mt-1">{c.phone}</div>}
-            {c.rest > 0 && <div className="text-sm text-green-700 mt-1 font-semibold">Остаток: {c.rest}</div>}
+          <div
+            key={c.id}
+            onClick={() => router.push('/client/' + c.id)}
+            className="rounded-2xl p-4 cursor-pointer"
+            style={{ background: '#141414', border: '1px solid #262626' }}
+          >
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="font-bold">{c.name}</div>
+                <div className="text-xs text-white/50 mt-1">{c.format || 'без формата'}</div>
+                {c.phone && <div className="text-xs mt-1" style={{ color: ORANGE }}>{c.phone}</div>}
+              </div>
+              {c.rest > 0 && (
+                <div className="text-xs px-2 py-1 rounded-full" style={{ background: ORANGE + '22', color: ORANGE }}>
+                  {c.rest} зан.
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
+
       <TabBar />
     </div>
   );

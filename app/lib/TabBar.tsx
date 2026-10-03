@@ -2,6 +2,8 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 
+const ORANGE = '#FF4A1C';
+
 export default function TabBar() {
   const router = useRouter();
   const path = usePathname();
@@ -16,19 +18,29 @@ export default function TabBar() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-40 overflow-x-auto">
-      {tabs.map(t => {
-        const active = path === t.key || path.startsWith(t.key + '/');
-        return (
-          <button
-            key={t.key}
-            onClick={() => router.push(t.key)}
-            className={'flex-1 text-center text-xs font-semibold py-1 min-w-[60px] ' + (active ? 'text-purple-700' : 'text-gray-400')}
-          >
-            {t.label}
-          </button>
-        );
-      })}
+    <div className="fixed bottom-0 left-0 right-0 z-40" style={{ background: '#0a0a0a', borderTop: '1px solid #1a1a1a' }}>
+      <div className="flex justify-around py-3 overflow-x-auto">
+        {tabs.map(t => {
+          const active = path === t.key || path.startsWith(t.key + '/');
+          return (
+            <button
+              key={t.key}
+              onClick={() => router.push(t.key)}
+              className="flex-1 text-center py-1 min-w-[55px]"
+            >
+              <div
+                className="text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: active ? ORANGE : '#525252' }}
+              >
+                {t.label}
+              </div>
+              {active && (
+                <div className="w-5 h-0.5 mx-auto mt-1 rounded-full" style={{ background: ORANGE }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

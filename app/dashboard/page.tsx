@@ -24,23 +24,38 @@ export default function Dashboard() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const t = await getTrainer();
-    if (!t) { router.push('/'); return; }
-    setTrainer(t);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { router.push('/'); return; }
 
-    const { data: c } = await supabase.from('clients').select('*').eq('trainer_id', t.id).order('name');
-    setClients(c || []);
+  let t = await getTrainer();
 
-    const start = new Date();
-    start.setDate(1);
-    const { data: p } = await supabase.from('payments')
-      .select('amount')
-      .eq('trainer_id', t.id)
-      .gte('date', start.toISOString().split('T')[0]);
-    setPayments(p || []);
-
-    setLoading(false);
+  // Если тренера нет — создаём автоматически
+  if (!t) {
+    const phone = (user.email || '').replace('@crm.local', '');
+    await supabase.from('trainers').insert({
+      user_id: user.id,
+      phone: phone || '000',
+      name: 'Muld',
+    });
+    t = await getTrainer();
   }
+
+  if (!t) { router.push('/'); return; }
+  setTrainer(t);
+
+  const { data: c } = await supabase.from('clients').select('*').eq('trainer_id', t.id).order('name');
+  setClients(c || []);
+
+  const start = new Date();
+  start.setDate(1);
+  const { data: p } = await supabase.from('payments')
+    .select('amount')
+    .eq('trainer_id', t.id)
+    .gte('date', start.toISOString().split('T')[0]);
+  setPayments(p || []);
+
+  setLoading(false);
+}
 
   async function addClient() {
     if (!newName.trim() || !trainer) return;

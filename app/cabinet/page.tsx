@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { getClientByUser, signOut } from '../lib/auth';
 import { useRealtime } from '../lib/useRealtime';
-import { getLevel, getNextLevel, getProgressPercent, getAchievements } from '../lib/Achievements';
 import WeightChart from '../lib/WeightChart';
 import { getLevel, getNextLevel, getProgressPercent, getAchievements, calculateStreak } from '../lib/Achievements';
 

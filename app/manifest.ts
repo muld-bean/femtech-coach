@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Femtech Coach',
     short_name: 'Femtech',
-    start_url: '/dashboard',
+    start_url: '/',,
     display: 'standalone',
     background_color: '#000000',
     theme_color: '#FF4A1C',

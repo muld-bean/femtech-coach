@@ -17,10 +17,21 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.push('/dashboard');
-    });
-  }, [router]);
+  supabase.auth.getSession().then(async ({ data }) => {
+    if (!data.session) return;
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+
+    const { data: trainer } = await supabase
+      .from('trainers')
+      .select('id')
+      .eq('user_id', user.user.id)
+      .maybeSingle();
+
+    if (trainer) router.push('/dashboard');
+    else router.push('/cabinet');
+  });
+}, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

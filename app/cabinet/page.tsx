@@ -105,7 +105,6 @@ export default function Cabinet() {
     load();
   }, []);
 
-  // Периодическое обновление (polling)
   useRealtime(['schedule', 'shifts', 'requests', 'cycles', 'clients'], load);
 
   function showToast(msg: string) {
@@ -124,7 +123,6 @@ export default function Cabinet() {
     if (!c) { router.push('/'); return; }
     setClient(c);
 
-    // Загружаем ВСЕ тренировки (прошлые + будущие)
     const { data: s } = await supabase
       .from('schedule')
       .select('*')
@@ -246,13 +244,12 @@ export default function Cabinet() {
     load();
   }
 
-function openTelegramLink() {
-  if (!client) return;
-  // Замени username на свой из BotFather
-  const botUsername = 'MyTrainerHelperBot';
-  const url = `https://t.me/${botUsername}?start=c_${client.id}`;
-  window.open(url, '_blank');
-}
+  function openTelegramLink() {
+    if (!client) return;
+    const botUsername = 'MyTrainerHelperBot';
+    const url = `https://t.me/${botUsername}?start=c_${client.id}`;
+    window.open(url, '_blank');
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -278,6 +275,10 @@ function openTelegramLink() {
   const goalV = parseFloat((client.goal1_value || '').replace(/[^\d.]/g, '')) || 0;
   const goalC = parseFloat((client.goal1_current || '').replace(/[^\d.]/g, '')) || 0;
   const goalPct = goalV > 0 ? Math.min(100, Math.round(goalC / goalV * 100)) : 0;
+  const weightData = measurements
+    .filter(m => m.weight)
+    .map(m => ({ date: m.date, value: parseFloat(String(m.weight).replace(',', '.')) || 0 }))
+    .filter(p => p.value > 0);
 
   return (
     <div className="min-h-screen bg-black text-white pb-28" style={{ fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif' }}>
@@ -335,7 +336,7 @@ function openTelegramLink() {
             </div>
           )}
 
-          {/* МОЙ ПУТЬ — УРОВЕНЬ И ДОСТИЖЕНИЯ */}
+          {/* МОЙ ПУТЬ */}
           {widgets.journey && (() => {
             const trainingsCount = schedule.filter((s: any) => s.status === 'проведено').length;
             const level = getLevel(trainingsCount);
@@ -343,11 +344,11 @@ function openTelegramLink() {
             const progress = getProgressPercent(trainingsCount);
             const streak = calculateStreak(schedule);
             const achievements = getAchievements({
-             trainings: trainingsCount,
-             hasMeasurements: measurements.length > 0,
-             hasGoal: !!client.goal1,
-             hasCycle: !!cycle,
-             hasStreakMonth: streak >= 4,
+              trainings: trainingsCount,
+              hasMeasurements: measurements.length > 0,
+              hasGoal: !!client.goal1,
+              hasCycle: !!cycle,
+              hasStreakMonth: streak >= 4,
             });
             const unlockedCount = achievements.filter(a => a.unlocked).length;
 
@@ -359,7 +360,7 @@ function openTelegramLink() {
                 </div>
 
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-[10px] font-black uppercase text-center leading-tight"
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-[10px] font-black uppercase text-center leading-tight px-1"
                     style={{ background: level.color + '22', border: '2px solid ' + level.color, color: level.color }}>
                     {level.name}
                   </div>
@@ -370,25 +371,26 @@ function openTelegramLink() {
                     </div>
                   </div>
                 </div>
+
                 {streak > 0 && (
-  <div className="mb-3 px-3 py-2 rounded-xl flex items-center justify-between" style={{ background: '#fbbf2422' }}>
-    <span className="text-xs text-white/70">Серия без пропусков</span>
-    <span className="text-sm font-black" style={{ color: '#fbbf24' }}>
-      🔥 {streak} {streak === 1 ? 'неделя' : streak < 5 ? 'недели' : 'недель'}
-    </span>
-  </div>
-)}
+                  <div className="mb-3 px-3 py-2 rounded-xl flex items-center justify-between" style={{ background: '#fbbf2422' }}>
+                    <span className="text-xs text-white/70">Серия без пропусков</span>
+                    <span className="text-sm font-black" style={{ color: '#fbbf24' }}>
+                      🔥 {streak} {streak === 1 ? 'неделя' : streak < 5 ? 'недели' : 'недель'}
+                    </span>
+                  </div>
+                )}
 
                 {nextLevel && (
-                  <>
+                  <div className="mb-4">
                     <div className="flex justify-between text-xs text-white/40 mb-1">
                       <span>До {nextLevel.name}</span>
                       <span>{progress}%</span>
                     </div>
-                    <div className="h-2 rounded-full overflow-hidden mb-4" style={{ background: '#262626' }}>
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: '#262626' }}>
                       <div className="h-2 rounded-full transition-all" style={{ width: progress + '%', background: level.color }} />
                     </div>
-                  </>
+                  </div>
                 )}
 
                 <div className="grid grid-cols-4 gap-2">
@@ -416,17 +418,18 @@ function openTelegramLink() {
             );
           })()}
 
+          {/* ПОДКЛЮЧИТЬ TELEGRAM */}
           {!client.telegram_chat_id && (
-  <button
-    onClick={openTelegramLink}
-    className="w-full rounded-3xl p-5 text-left"
-    style={{ background: ORANGE, color: 'white' }}
-  >
-    <div className="text-xs uppercase tracking-widest opacity-80 mb-1">Подключить Telegram</div>
-    <div className="text-lg font-black">Получай напоминания о тренировках</div>
-    <div className="text-sm opacity-80 mt-1">Нажми и напиши боту /start</div>
-  </button>
-)}
+            <button
+              onClick={openTelegramLink}
+              className="w-full rounded-3xl p-5 text-left"
+              style={{ background: ORANGE, color: 'white' }}
+            >
+              <div className="text-xs uppercase tracking-widest opacity-80 mb-1">Подключить Telegram</div>
+              <div className="text-lg font-black">Получай напоминания о тренировках</div>
+              <div className="text-sm opacity-80 mt-1">Нажми и напиши боту /start</div>
+            </button>
+          )}
 
           {/* TODAY PROGRAM */}
           {widgets.program && program.length > 0 && (
@@ -469,7 +472,7 @@ function openTelegramLink() {
               {todaySchedule.length === 0 && todayShifts.length === 0 ? (
                 <div className="text-sm text-white/40 py-3">Сегодня тренировок нет. Отдых тоже важен.</div>
               ) : (
-                <>
+                <div>
                   {todaySchedule.map(s => (
                     <div key={s.id} className="flex items-center gap-3 py-2">
                       <div className="w-2 h-2 rounded-full" style={{ background: ORANGE }} />
@@ -484,7 +487,7 @@ function openTelegramLink() {
                       Тренер в зале: {todayShifts.map(s => s.start_time + '–' + s.end_time).join(', ')}
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
@@ -510,7 +513,7 @@ function openTelegramLink() {
             <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
               <div className="text-xs uppercase tracking-widest text-white/50 mb-3">Мой цикл</div>
               {cycle && phase ? (
-                <>
+                <div>
                   <div className="flex items-center gap-4 mb-3">
                     <div className="w-16 h-16 rounded-full flex flex-col items-center justify-center" style={{ background: phase.color + '22', border: '2px solid ' + phase.color }}>
                       <div className="text-xl font-black" style={{ color: phase.color }}>{cycleDay}</div>
@@ -524,7 +527,7 @@ function openTelegramLink() {
                   <button onClick={markCycleMiss} className="w-full py-2 text-xs text-red-400 border border-red-500/30 rounded-xl">
                     Отметить сбой
                   </button>
-                </>
+                </div>
               ) : (
                 <div className="text-sm text-white/40 mb-3">Цикл не отмечен</div>
               )}
@@ -594,7 +597,7 @@ function openTelegramLink() {
               <div key={s.id} className="rounded-2xl p-4 flex justify-between items-center" style={{ background: '#141414', border: '1px solid #262626' }}>
                 <div>
                   <div className="font-bold text-sm">{fmtDate(s.date)}</div>
-                  <div className="text-xs text-white/50 mt-1">{s.start_time} – {s.end_time}</div>
+                  <div className="text-xs text-white/50 mt-1">{String(s.start_time).slice(0, 5)} – {String(s.end_time).slice(0, 5)}</div>
                 </div>
                 <button
                   onClick={() => requestShift(s)}
@@ -618,7 +621,7 @@ function openTelegramLink() {
             <div className="text-white/60 text-sm mb-4">занятий осталось</div>
 
             {dl !== null && (
-              <>
+              <div>
                 <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: '#262626' }}>
                   <div
                     className="h-2 rounded-full"
@@ -631,7 +634,7 @@ function openTelegramLink() {
                 <div className="text-xs text-white/50">
                   {dl > 0 ? 'Действует ещё ' + dl + ' дн.' : dl === 0 ? 'Истекает сегодня' : 'Истёк ' + Math.abs(dl) + ' дн. назад'}
                 </div>
-              </>
+              </div>
             )}
           </div>
 
@@ -666,12 +669,14 @@ function openTelegramLink() {
       {/* TAB: PROGRESS */}
       {tab === 'progress' && (
         <div className="px-5 space-y-4">
+
+          {/* ЗАМЕРЫ */}
           <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
             <div className="text-xs uppercase tracking-widest text-white/50 mb-3">Замеры</div>
             {measurements.length === 0 ? (
               <div className="text-sm text-white/40 py-3">Пока нет замеров</div>
             ) : (
-              <>
+              <div>
                 <div className="rounded-2xl p-4 mb-3" style={{ background: ORANGE + '11' }}>
                   <div className="text-xs text-white/50 mb-2">Последний · {fmtDate(measurements[0].date)}</div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -691,10 +696,19 @@ function openTelegramLink() {
                     </span>
                   </div>
                 ))}
-              </>
+              </div>
             )}
           </div>
 
+          {/* ГРАФИК ВЕСА */}
+          {weightData.length >= 2 && (
+            <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
+              <div className="text-xs uppercase tracking-widest text-white/50 mb-3">Динамика веса</div>
+              <WeightChart data={weightData} />
+            </div>
+          )}
+
+          {/* ЦИКЛ */}
           {client.gender === 'female' && cycle && phase && (
             <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
               <div className="text-xs uppercase tracking-widest text-white/50 mb-3">Цикл</div>
@@ -711,23 +725,13 @@ function openTelegramLink() {
             </div>
           )}
 
-                   {(client.strategy || client.medical || client.injuries) && (
+          {/* СТРАТЕГИЯ */}
+          {(client.strategy || client.medical || client.injuries) && (
             <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
               <div className="text-xs uppercase tracking-widest text-white/50 mb-3">Стратегия и заметки</div>
               {client.strategy && <div className="text-sm whitespace-pre-wrap mb-3">{client.strategy}</div>}
               {client.medical && <div className="text-xs text-white/50 mb-1">Медпоказания: {client.medical}</div>}
               {client.injuries && <div className="text-xs text-white/50">Травмы: {client.injuries}</div>}
-            </div>
-          )}
-
-          {measurements.filter(m => m.weight).length >= 2 && (
-            <div className="rounded-2xl p-4 mb-4" style={{ background: '#0a0a0a' }}>
-              <WeightChart
-                data={measurements
-                  .filter(m => m.weight)
-                  .map(m => ({ date: m.date, value: parseFloat(String(m.weight).replace(',', '.')) || 0 }))
-                  .filter(p => p.value > 0)}
-              />
             </div>
           )}
         </div>

@@ -117,7 +117,6 @@ export async function registerClientByInvite(
     if (signInErr) return { error: 'Сессия не установлена: ' + signInErr.message };
   }
 
-  // Ищем клиента по имени у этого тренера
   const { data: existing } = await supabase
     .from('clients')
     .select('id, user_id, phone')
@@ -130,21 +129,20 @@ export async function registerClientByInvite(
       user_id: data.user.id,
       phone: clean,
       name: trimmedName,
+      gender: gender,
     }).eq('id', existing.id);
     if (updErr) return { error: updErr.message };
   } else {
     const magicToken = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
-
-const { error: insErr } = await supabase.from('clients').insert({
-  user_id: data.user.id,
-  trainer_id: invite.trainer_id,
-  name,
-  phone: clean,
-  rest: 0,
-  magic_token: magicToken,
-  gender,
-});ken: magicToken,
-});
+    const { error: insErr } = await supabase.from('clients').insert({
+      user_id: data.user.id,
+      trainer_id: invite.trainer_id,
+      name: trimmedName,
+      phone: clean,
+      rest: 0,
+      magic_token: magicToken,
+      gender: gender,
+    });
     if (insErr) return { error: insErr.message };
   }
 

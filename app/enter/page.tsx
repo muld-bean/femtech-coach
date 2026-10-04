@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 
 const ORANGE = '#FF4A1C';
 
-export default function Enter() {
+function EnterInner() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get('token');
@@ -50,7 +50,7 @@ export default function Enter() {
     }
   }
 
-   return (
+  return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
       <div className="w-full max-w-sm text-center">
         <div className="text-xs uppercase tracking-widest mb-6" style={{ color: ORANGE }}>
@@ -59,8 +59,7 @@ export default function Enter() {
 
         {!error ? (
           <div>
-            <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center"
-              style={{ background: '#141414', border: '1px solid ' + ORANGE }}>
+            <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: '#141414', border: '1px solid ' + ORANGE }}>
               <div className="w-8 h-8 rounded-full animate-pulse" style={{ background: ORANGE }} />
             </div>
             <div className="text-lg font-bold mb-2">{status}</div>
@@ -81,5 +80,17 @@ export default function Enter() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Enter() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-white/50">Загрузка...</div>
+      </div>
+    }>
+      <EnterInner />
+    </Suspense>
   );
 }

@@ -718,7 +718,7 @@ function openTelegramLink() {
               {client.medical && <div className="text-xs text-white/50 mb-1">Медпоказания: {client.medical}</div>}
               {client.injuries && <div className="text-xs text-white/50">Травмы: {client.injuries}</div>}
             </div>
-            {measurements.filter(m => m.weight).length >= 2 && (
+           {measurements.filter(m => m.weight).length >= 2 && (
   <div className="rounded-2xl p-4 mb-4" style={{ background: '#0a0a0a' }}>
     <WeightChart
       data={measurements

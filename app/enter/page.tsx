@@ -50,7 +50,7 @@ export default function Enter() {
     }
   }
 
-  return (
+   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
       <div className="w-full max-w-sm text-center">
         <div className="text-xs uppercase tracking-widest mb-6" style={{ color: ORANGE }}>
@@ -58,15 +58,16 @@ export default function Enter() {
         </div>
 
         {!error ? (
-          <>
-            <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: '#141414', border: '1px solid ' + ORANGE }}>
+          <div>
+            <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center"
+              style={{ background: '#141414', border: '1px solid ' + ORANGE }}>
               <div className="w-8 h-8 rounded-full animate-pulse" style={{ background: ORANGE }} />
             </div>
             <div className="text-lg font-bold mb-2">{status}</div>
             <div className="text-sm text-white/50">Это займёт пару секунд</div>
-          </>
+          </div>
         ) : (
-          <>
+          <div>
             <div className="text-2xl font-black mb-3" style={{ color: '#ef4444' }}>Ошибка</div>
             <div className="text-sm text-white/60 mb-6">{error}</div>
             <button
@@ -76,7 +77,7 @@ export default function Enter() {
             >
               На главную
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
@@ -87,11 +85,13 @@ function EnterInner() {
 
 export default function Enter() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-white/50">Загрузка...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+          <div className="text-white/50">Загрузка...</div>
+        </div>
+      }
+    >
       <EnterInner />
     </Suspense>
   );

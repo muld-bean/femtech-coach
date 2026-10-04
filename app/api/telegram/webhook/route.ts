@@ -41,12 +41,10 @@ export async function POST(req: Request) {
           await supabaseAdmin.from('clients').update({ magic_token: token }).eq('id', client.id);
         }
 
-        const enterUrl = BASE_URL + '/enter?token=' + token;
-
         await sendTelegram(
-          chatId,
-          `Привет, ${name}! 👋\n\nТы подключена к тренеру.\n\n🔗 <b>Твоя личная ссылка для входа в кабинет:</b>\n${enterUrl}\n\nСохрани её — работает без пароля.`
-        );
+  chatId,
+  `Привет, ${name}! 👋\n\nТы подключена к тренеру. Напоминания о тренировках будут приходить сюда.`
+);
 
         return NextResponse.json({ ok: true });
       }

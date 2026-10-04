@@ -87,7 +87,13 @@ export async function getInvite(token: string) {
   return data;
 }
 
-export async function registerClientByInvite(token: string, phone: string, password: string, name: string) {
+export async function registerClientByInvite(
+  token: string,
+  phone: string,
+  password: string,
+  name: string,
+  gender: 'female' | 'male' = 'female'
+) {
   const invite = await getInvite(token);
   if (!invite) return { error: 'Ссылка не найдена' };
   if (invite.status !== 'активна') return { error: 'Ссылка уже использована' };
@@ -136,6 +142,8 @@ const { error: insErr } = await supabase.from('clients').insert({
   phone: clean,
   rest: 0,
   magic_token: magicToken,
+  gender,
+});ken: magicToken,
 });
     if (insErr) return { error: insErr.message };
   }

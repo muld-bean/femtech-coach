@@ -14,6 +14,7 @@ export default function InvitePage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [gender, setGender] = useState<'female' | 'male'>('female');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function InvitePage() {
 
     if (!name.trim()) { setError('Введите имя'); setSubmitting(false); return; }
 
-    const res = await registerClientByInvite(token, phone, password, name);
+    const res = await registerClientByInvite(token, phone, password, name, gender);
     if (res.error) { setError(res.error); setSubmitting(false); return; }
 
     router.push('/cabinet');
@@ -77,6 +78,16 @@ export default function InvitePage() {
             className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3 focus:outline-none focus:border-purple-700"
             required
           />
+
+          <label className="block text-sm font-semibold text-gray-600 mb-1">Ваш пол</label>
+<select
+  value={gender}
+  onChange={e => setGender(e.target.value as 'female' | 'male')}
+  className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3 focus:outline-none focus:border-purple-700"
+>
+  <option value="female">Женский</option>
+  <option value="male">Мужской</option>
+</select>
 
           <label className="block text-sm font-semibold text-gray-600 mb-1">Телефон</label>
           <input

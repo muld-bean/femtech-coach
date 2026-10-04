@@ -53,7 +53,7 @@ export default function Enter() {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
       <div className="w-full max-w-sm text-center">
-        <div className="text-xs uppercase tracking-[0.3em] mb-6" style={{ color: ORANGE }}>
+        <div className="text-xs uppercase tracking-widest mb-6" style={{ color: ORANGE }}>
           Femtech
         </div>
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../../lib/supabase-admin';
+import { supabaseAdmin } from '../../../lib/supabase-admin';
 
 function cleanPhone(p: string) {
   let s = String(p).replace(/\D/g, '');

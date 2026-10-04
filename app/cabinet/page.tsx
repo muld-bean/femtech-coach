@@ -711,35 +711,27 @@ function openTelegramLink() {
             </div>
           )}
 
-          {(client.strategy || client.medical || client.injuries) && (
+                   {(client.strategy || client.medical || client.injuries) && (
             <div className="rounded-3xl p-5" style={{ background: '#141414', border: '1px solid #262626' }}>
               <div className="text-xs uppercase tracking-widest text-white/50 mb-3">Стратегия и заметки</div>
               {client.strategy && <div className="text-sm whitespace-pre-wrap mb-3">{client.strategy}</div>}
               {client.medical && <div className="text-xs text-white/50 mb-1">Медпоказания: {client.medical}</div>}
               {client.injuries && <div className="text-xs text-white/50">Травмы: {client.injuries}</div>}
             </div>
-{measurements.filter(m => m.weight).length >= 2 && (
-  <div className="rounded-2xl p-4 mb-4" style={{ background: '#0a0a0a' }}>
-    <WeightChart
-      data={measurements
-        .filter(m => m.weight)
-        .map(m => ({ date: m.date, value: parseFloat(String(m.weight).replace(',', '.')) || 0 }))
-        .filter(p => p.value > 0)}
-    />
-  </div>
-)}
-<div className="rounded-2xl p-4 mb-4" style={{ background: '#0a0a0a' }}>
-    <WeightChart
-      data={measurements
-        .filter(m => m.weight)
-        .map(m => ({ date: m.date, value: parseFloat(String(m.weight).replace(',', '.')) || 0 }))
-        .filter(p => p.value > 0)}
-    />
-  </div>
+          )}
+
+          {measurements.filter(m => m.weight).length >= 2 && (
+            <div className="rounded-2xl p-4 mb-4" style={{ background: '#0a0a0a' }}>
+              <WeightChart
+                data={measurements
+                  .filter(m => m.weight)
+                  .map(m => ({ date: m.date, value: parseFloat(String(m.weight).replace(',', '.')) || 0 }))
+                  .filter(p => p.value > 0)}
+              />
+            </div>
           )}
         </div>
       )}
-)}
 
       {/* TOAST */}
       {toast && (
